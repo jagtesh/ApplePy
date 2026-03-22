@@ -4,20 +4,20 @@
 @attached(member, names: arbitrary)
 public macro PyClass() = #externalMacro(module: "ApplePyMacros", type: "PyClassMacro")
 
-@attached(peer, names: arbitrary)
+@attached(peer, names: prefixed(_applepy_))
 public macro PyFunction() = #externalMacro(module: "ApplePyMacros", type: "PyFunctionMacro")
 
-@attached(peer, names: arbitrary)
+@attached(peer, names: prefixed(_applepy_))
 public macro PyMethod(_ pythonName: String? = nil) = #externalMacro(module: "ApplePyMacros", type: "PyMethodMacro")
 
-@freestanding(declaration, names: arbitrary)
+@freestanding(declaration, names: prefixed(_applepy_))
 public macro pymodule(_ name: String, types: [Any.Type] = [], functions: [Any] = []) = #externalMacro(module: "ApplePyMacros", type: "PyModuleMacro")
 
 @attached(member, names: arbitrary)
 public macro PyEnum() = #externalMacro(module: "ApplePyMacros", type: "PyEnumMacro")
 
-@attached(peer, names: arbitrary)
+@attached(peer, names: prefixed(_applepy_))
 public macro PyProperty() = #externalMacro(module: "ApplePyMacros", type: "PyPropertyMacro")
 
-@attached(peer, names: arbitrary)
+@attached(peer, names: prefixed(_applepy_))
 public macro PyStaticMethod() = #externalMacro(module: "ApplePyMacros", type: "PyStaticMethodMacro")

@@ -1,7 +1,7 @@
 import Testing
 import SwiftSyntaxMacros
 import SwiftSyntaxMacrosTestSupport
-@testable import ApplePyMacroCore
+@testable import ApplePyMacros
 
 let testMacros: [String: Macro.Type] = [
     "PyFunction": PyFunctionMacro.self,

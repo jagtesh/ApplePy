@@ -4,7 +4,6 @@
 import SwiftCompilerPlugin
 import SwiftSyntax
 import SwiftSyntaxMacros
-@_exported import ApplePyMacroCore
 
 @main
 struct ApplePyMacroPlugin: CompilerPlugin {
