@@ -46,7 +46,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Operating System :: MacOS",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Swift",
 ]
 
 [tool.setuptools.packages.find]

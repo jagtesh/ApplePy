@@ -7,6 +7,5 @@ License: BSD-3-Clause
 Classifier: Development Status :: 3 - Alpha
 Classifier: Operating System :: MacOS
 Classifier: Programming Language :: Python :: 3
-Classifier: Programming Language :: Swift
 Classifier: Topic :: Software Development :: Build Tools
 Requires-Python: >=3.10
