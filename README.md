@@ -138,6 +138,10 @@ dependencies: [
 | Free-threaded Python 3.14t | v1.2 |
 | Ecosystem type bridges (Foundation.Date, Codable) | Future |
 
+## Acknowledgements
+
+Taking inspiration from [PyO3](https://pyo3.rs), ApplePy's macro system has been adapted to Swift 6.0 — including the `@PyModule` peer-macro pattern, compile-time GIL safety via `~Copyable`, and the `names: prefixed(_applepy_)` approach for global-scope macro hygiene.
+
 ## License
 
 BSD-3-Clause © Jagtesh Chadha — see [LICENSE](LICENSE).
