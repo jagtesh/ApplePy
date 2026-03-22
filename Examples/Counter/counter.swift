@@ -125,7 +125,7 @@ public func Counter_tp_dealloc(_ self_: UnsafeMutablePointer<PyObject>?) {
     // Release the ARC reference to our Swift CounterBox
     releaseBox(self_)
     // Free the PyObject memory
-    let type = ApplyPy_TYPE(self_)
+    let type = ApplePy_TYPE(self_)
     type?.pointee.tp_free?(UnsafeMutableRawPointer(self_))
 }
 
@@ -140,7 +140,7 @@ public func Counter_increment(
     guard let self_ = self_ else { return nil }
     let box = getBox(self_)
     box.increment()
-    return ApplyPy_None()
+    return ApplePy_None()
 }
 
 /// value() -> int — returns the current count
@@ -209,16 +209,16 @@ private var moduleMethods: [PyMethodDef] = [
     PyMethodDef(ml_name: nil, ml_meth: nil, ml_flags: 0, ml_doc: nil),
 ]
 
-private var moduleDef = ApplyPy_MakeModuleDef(kModName, kModDoc, -1, &moduleMethods)
+private var moduleDef = ApplePy_MakeModuleDef(kModName, kModDoc, -1, &moduleMethods)
 
 @_cdecl("PyInit_counter")
 public func PyInit_counter() -> UnsafeMutablePointer<PyObject>? {
     // Create the module
-    guard let module = ApplyPy_ModuleCreate(&moduleDef) else { return nil }
+    guard let module = ApplePy_ModuleCreate(&moduleDef) else { return nil }
 
     // Create the Counter type from our spec
     guard let counterType = PyType_FromSpec(&counterSpec) else {
-        ApplyPy_DECREF(module)
+        ApplePy_DECREF(module)
         return nil
     }
 
@@ -227,8 +227,8 @@ public func PyInit_counter() -> UnsafeMutablePointer<PyObject>? {
         PyModule_AddObject(module, name, counterType)
     }
     if addResult < 0 {
-        ApplyPy_DECREF(counterType)
-        ApplyPy_DECREF(module)
+        ApplePy_DECREF(counterType)
+        ApplePy_DECREF(module)
         return nil
     }
 

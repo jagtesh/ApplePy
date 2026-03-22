@@ -94,9 +94,9 @@ private var helloMethods: [PyMethodDef] = [
 
 // ─── Module init (must be a global) ─────────────────────────────────────────
 
-private var moduleDef = ApplyPy_MakeModuleDef(kModuleName, kModuleDoc, -1, &helloMethods)
+private var moduleDef = ApplePy_MakeModuleDef(kModuleName, kModuleDoc, -1, &helloMethods)
 
 @_cdecl("PyInit_hello")
 public func PyInit_hello() -> UnsafeMutablePointer<PyObject>? {
-    return ApplyPy_ModuleCreate(&moduleDef)
+    return ApplePy_ModuleCreate(&moduleDef)
 }

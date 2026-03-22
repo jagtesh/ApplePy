@@ -1,4 +1,4 @@
-// ApplyPy – @PyFunction Macro Implementation
+// ApplePy – @PyFunction Macro Implementation
 // Generates a @_cdecl wrapper + PyMethodDef for a top-level Swift function.
 
 import SwiftSyntax
@@ -16,7 +16,7 @@ public struct PyFunctionMacro: PeerMacro {
         }
 
         let funcName = funcDecl.name.text
-        let wrapperName = "_applypy_\(funcName)"
+        let wrapperName = "_applepy_\(funcName)"
         let params = funcDecl.signature.parameterClause.parameters
         let returnsVoid = funcDecl.signature.returnClause == nil
         let isThrowing = funcDecl.signature.effectSpecifiers?.throwsClause != nil
@@ -64,7 +64,7 @@ public struct PyFunctionMacro: PeerMacro {
         if returnsVoid {
             returnConversion = """
                 \(isThrowing ? "try " : "")\(callExpr)
-                return ApplyPy_None()
+                return ApplePy_None()
             """
         } else {
             returnConversion = """
@@ -108,7 +108,7 @@ public struct PyFunctionMacro: PeerMacro {
             """
 
         // Generate the PyMethodDef constant name
-        let methodDefName = "_applypy_methoddef_\(funcName)"
+        let methodDefName = "_applepy_methoddef_\(funcName)"
 
         // Generate the PyMethodDef
         // We use strdup for stable C strings

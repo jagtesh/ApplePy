@@ -1,4 +1,4 @@
-// ApplyPy – @PyMethod Macro Implementation
+// ApplePy – @PyMethod Macro Implementation
 // Generates a @_cdecl wrapper for a method inside a @PyClass.
 // The wrapper extracts `self` from the PyObject, unpacks args, calls the method,
 // and converts the return value.

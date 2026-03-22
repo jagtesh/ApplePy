@@ -1,4 +1,4 @@
-// ApplyPy – #pymodule Macro Implementation
+// ApplePy – #pymodule Macro Implementation
 // Generates PyInit_<name> entry point that creates the module and registers types/functions.
 
 import SwiftSyntax
@@ -49,7 +49,7 @@ public struct PyModuleMacro: DeclarationMacro {
         // Build method table entries from @PyFunction-annotated functions
         var methodEntries: [String] = []
         for funcName in functionNames {
-            methodEntries.append("_applypy_methoddef_\(funcName)")
+            methodEntries.append("_applepy_methoddef_\(funcName)")
         }
 
         // Build the method table
@@ -64,7 +64,7 @@ public struct PyModuleMacro: DeclarationMacro {
         for typeName in typeNames {
             typeRegCalls.append("""
                 guard \(typeName).registerType(in: module) else {
-                    ApplyPy_DECREF(module)
+                    ApplePy_DECREF(module)
                     return nil
                 }
             """)
@@ -76,16 +76,16 @@ public struct PyModuleMacro: DeclarationMacro {
 
         // Generate the method table
         decls.append("""
-            private var _applypy_module_methods: [PyMethodDef] = [
+            private var _applepy_module_methods: [PyMethodDef] = [
                 \(raw: methodTableLines.joined(separator: "\n    "))
             ]
             """)
 
         // Generate module def (global to survive the function scope)
         decls.append("""
-            private var _applypy_module_def: PyModuleDef = {
+            private var _applepy_module_def: PyModuleDef = {
                 let name: UnsafePointer<CChar> = "\(raw: moduleName)".withCString { UnsafePointer(strdup($0)!) }
-                return ApplyPy_MakeModuleDef(name, nil, -1, &_applypy_module_methods)
+                return ApplePy_MakeModuleDef(name, nil, -1, &_applepy_module_methods)
             }()
             """)
 
@@ -93,7 +93,7 @@ public struct PyModuleMacro: DeclarationMacro {
         decls.append("""
             @_cdecl("\(raw: initFuncName)")
             public func \(raw: initFuncName)() -> UnsafeMutablePointer<PyObject>? {
-                guard let module = ApplyPy_ModuleCreate(&_applypy_module_def) else { return nil }
+                guard let module = ApplePy_ModuleCreate(&_applepy_module_def) else { return nil }
                 \(raw: typeRegCalls.joined(separator: "\n    "))
                 return module
             }

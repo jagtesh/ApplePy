@@ -9,7 +9,7 @@ PYTHON_INCLUDE=$(python3 -c 'import sysconfig; print(sysconfig.get_path("include
 PYTHON_LIBDIR=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')
 PYTHON_TAG=$(python3 -c 'import sys; print(f"cpython-{sys.version_info.major}{sys.version_info.minor}")')
 PYTHON_HOME=$(python3 -c 'import sys; print(sys.prefix)')
-APPLYPY_FFI="$(cd ../.. && pwd)/Sources/ApplyPyFFI"
+APPLEPY_FFI="$(cd ../.. && pwd)/Sources/ApplePyFFI"
 
 case "$(uname -s)" in
     Darwin) PLATFORM="darwin" ;; 
@@ -25,7 +25,7 @@ echo "Building ${SO_NAME}..."
 TMPDIR_MAP=$(mktemp -d)
 cat > "$TMPDIR_MAP/module.modulemap" <<EOF
 module CPythonShim [system] {
-    header "${APPLYPY_FFI}/include/applypy_shim.h"
+    header "${APPLEPY_FFI}/include/applepy_shim.h"
     link "python3.13"
     export *
 }

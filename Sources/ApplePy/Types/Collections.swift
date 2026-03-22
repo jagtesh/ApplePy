@@ -1,14 +1,14 @@
-// ApplyPy – Collection Type Conversions
+// ApplePy – Collection Type Conversions
 // Array, Dictionary, Optional ↔ Python list, dict, None
 
-import ApplyPyFFI
+import ApplePyFFI
 
 // MARK: - Array
 
 extension Array: FromPyObject where Element: FromPyObject {
     public static func fromPython(_ obj: UnsafeMutablePointer<PyObject>, py: PythonHandle) throws -> [Element] {
-        guard ApplyPy_ListCheck(obj) != 0 else {
-            let typeName = String(cString: ApplyPy_TYPE(obj).pointee.tp_name)
+        guard ApplePy_ListCheck(obj) != 0 else {
+            let typeName = String(cString: ApplePy_TYPE(obj).pointee.tp_name)
             throw PythonConversionError.typeMismatch(expected: "list", got: typeName)
         }
         let count = PyList_Size(obj)
@@ -30,7 +30,7 @@ extension Array: IntoPyObject where Element: IntoPyObject {
         guard let list = PyList_New(Py_ssize_t(self.count)) else { return nil }
         for (i, element) in self.enumerated() {
             guard let pyItem = element.intoPython(py: py) else {
-                ApplyPy_DECREF(list)
+                ApplePy_DECREF(list)
                 return nil
             }
             // PyList_SetItem steals a reference, so we don't need to decref pyItem
@@ -44,8 +44,8 @@ extension Array: IntoPyObject where Element: IntoPyObject {
 
 extension Dictionary: FromPyObject where Key: FromPyObject & Hashable, Value: FromPyObject {
     public static func fromPython(_ obj: UnsafeMutablePointer<PyObject>, py: PythonHandle) throws -> [Key: Value] {
-        guard ApplyPy_DictCheck(obj) != 0 else {
-            let typeName = String(cString: ApplyPy_TYPE(obj).pointee.tp_name)
+        guard ApplePy_DictCheck(obj) != 0 else {
+            let typeName = String(cString: ApplePy_TYPE(obj).pointee.tp_name)
             throw PythonConversionError.typeMismatch(expected: "dict", got: typeName)
         }
         var result: [Key: Value] = [:]
@@ -68,13 +68,13 @@ extension Dictionary: IntoPyObject where Key: IntoPyObject, Value: IntoPyObject 
         for (key, value) in self {
             guard let pyKey = key.intoPython(py: py),
                   let pyValue = value.intoPython(py: py) else {
-                ApplyPy_DECREF(dict)
+                ApplePy_DECREF(dict)
                 return nil
             }
             // PyDict_SetItem does NOT steal references — it increfs both key and value
             PyDict_SetItem(dict, pyKey, pyValue)
-            ApplyPy_DECREF(pyKey)
-            ApplyPy_DECREF(pyValue)
+            ApplePy_DECREF(pyKey)
+            ApplePy_DECREF(pyValue)
         }
         return dict
     }
@@ -84,7 +84,7 @@ extension Dictionary: IntoPyObject where Key: IntoPyObject, Value: IntoPyObject 
 
 extension Optional: FromPyObject where Wrapped: FromPyObject {
     public static func fromPython(_ obj: UnsafeMutablePointer<PyObject>, py: PythonHandle) throws -> Wrapped? {
-        if ApplyPy_IsNone(obj) != 0 {
+        if ApplePy_IsNone(obj) != 0 {
             return nil
         }
         return try Wrapped.fromPython(obj, py: py)
@@ -95,7 +95,7 @@ extension Optional: IntoPyObject where Wrapped: IntoPyObject {
     public func intoPython(py: PythonHandle) -> UnsafeMutablePointer<PyObject>? {
         switch self {
         case .none:
-            return ApplyPy_None()
+            return ApplePy_None()
         case .some(let value):
             return value.intoPython(py: py)
         }

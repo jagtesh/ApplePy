@@ -1,0 +1,5 @@
+module ApplePyFFI [system] {
+    header "include/applepy_shim.h"
+    link "python3.13"
+    export *
+}

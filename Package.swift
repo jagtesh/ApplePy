@@ -3,11 +3,11 @@ import PackageDescription
 import CompilerPluginSupport
 
 let package = Package(
-    name: "ApplyPy",
+    name: "ApplePy",
     platforms: [.macOS(.v13)],
     products: [
-        .library(name: "ApplyPy", targets: ["ApplyPy"]),
-        .library(name: "ApplyPyClient", targets: ["ApplyPyClient"]),
+        .library(name: "ApplePy", targets: ["ApplePy"]),
+        .library(name: "ApplePyClient", targets: ["ApplePyClient"]),
     ],
     dependencies: [
         .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0"),
@@ -15,7 +15,7 @@ let package = Package(
     targets: [
         // ── CPython FFI Bindings ─────────────────────────────────────
         .systemLibrary(
-            name: "ApplyPyFFI",
+            name: "ApplePyFFI",
             pkgConfig: "python3",
             providers: [
                 .brew(["python3"]),
@@ -25,46 +25,46 @@ let package = Package(
 
         // ── Core Library (types, GIL, memory bridge) ────────────────
         .target(
-            name: "ApplyPy",
-            dependencies: ["ApplyPyFFI", "ApplyPyClient"],
-            path: "Sources/ApplyPy"
+            name: "ApplePy",
+            dependencies: ["ApplePyFFI", "ApplePyClient"],
+            path: "Sources/ApplePy"
         ),
 
         // ── Macro Logic (importable regular library) ────────────────
         .target(
-            name: "ApplyPyMacroCore",
+            name: "ApplePyMacroCore",
             dependencies: [
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
             ],
-            path: "Sources/ApplyPyMacroCore"
+            path: "Sources/ApplePyMacroCore"
         ),
 
         // ── Macro Plugin (thin wrapper, re-exports core) ────────────
         .macro(
-            name: "ApplyPyMacros",
+            name: "ApplePyMacros",
             dependencies: [
-                "ApplyPyMacroCore",
+                "ApplePyMacroCore",
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
             ],
-            path: "Sources/ApplyPyMacros"
+            path: "Sources/ApplePyMacros"
         ),
 
         // ── Macro Declarations (thin target users import) ───────────
         .target(
-            name: "ApplyPyClient",
-            dependencies: ["ApplyPyMacros"],
-            path: "Sources/ApplyPyClient"
+            name: "ApplePyClient",
+            dependencies: ["ApplePyMacros"],
+            path: "Sources/ApplePyClient"
         ),
 
         // ── Tests ───────────────────────────────────────────────────
         .testTarget(
-            name: "ApplyPyTests",
+            name: "ApplePyTests",
             dependencies: [
-                "ApplyPy",
-                "ApplyPyClient",
-                "ApplyPyMacroCore",
+                "ApplePy",
+                "ApplePyClient",
+                "ApplePyMacroCore",
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
             ]
         ),

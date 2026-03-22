@@ -1,7 +1,7 @@
-// ApplyPy – Type Conversion Protocols
+// ApplePy – Type Conversion Protocols
 // These protocols define the bidirectional bridge between Swift and Python types.
 
-import ApplyPyFFI
+import ApplePyFFI
 
 // MARK: - FromPyObject
 

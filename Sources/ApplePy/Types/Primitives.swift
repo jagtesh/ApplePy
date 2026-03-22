@@ -1,7 +1,7 @@
-// ApplyPy – Primitive Type Conversions
+// ApplePy – Primitive Type Conversions
 // Int, Double, Float, Bool, String ↔ Python int, float, bool, str
 
-import ApplyPyFFI
+import ApplePyFFI
 
 // MARK: - Int
 
@@ -10,7 +10,7 @@ extension Int: FromPyObject {
         let value = PyLong_AsLongLong(obj)
         if value == -1 && PyErr_Occurred() != nil {
             PyErr_Clear()
-            let typeName = String(cString: ApplyPy_TYPE(obj).pointee.tp_name)
+            let typeName = String(cString: ApplePy_TYPE(obj).pointee.tp_name)
             throw PythonConversionError.typeMismatch(expected: "int", got: typeName)
         }
         return Int(value)
@@ -30,7 +30,7 @@ extension Double: FromPyObject {
         let value = PyFloat_AsDouble(obj)
         if value == -1.0 && PyErr_Occurred() != nil {
             PyErr_Clear()
-            let typeName = String(cString: ApplyPy_TYPE(obj).pointee.tp_name)
+            let typeName = String(cString: ApplePy_TYPE(obj).pointee.tp_name)
             throw PythonConversionError.typeMismatch(expected: "float", got: typeName)
         }
         return value
@@ -65,7 +65,7 @@ extension Bool: FromPyObject {
         let result = PyObject_IsTrue(obj)
         if result == -1 {
             PyErr_Clear()
-            let typeName = String(cString: ApplyPy_TYPE(obj).pointee.tp_name)
+            let typeName = String(cString: ApplePy_TYPE(obj).pointee.tp_name)
             throw PythonConversionError.typeMismatch(expected: "bool", got: typeName)
         }
         return result == 1
@@ -84,7 +84,7 @@ extension String: FromPyObject {
     public static func fromPython(_ obj: UnsafeMutablePointer<PyObject>, py: PythonHandle) throws -> String {
         guard let cStr = PyUnicode_AsUTF8(obj) else {
             PyErr_Clear()
-            let typeName = String(cString: ApplyPy_TYPE(obj).pointee.tp_name)
+            let typeName = String(cString: ApplePy_TYPE(obj).pointee.tp_name)
             throw PythonConversionError.typeMismatch(expected: "str", got: typeName)
         }
         return String(cString: cStr)

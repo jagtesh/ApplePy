@@ -1,4 +1,4 @@
-// ApplyPy – Memory Bridge
+// ApplePy – Memory Bridge
 // Formalized protocol and helpers for bridging Swift ARC with Python reference counting.
 //
 // Design: Two runtimes, two refcounts. Neither tries to synchronize with the other.
@@ -6,7 +6,7 @@
 // - When Python deallocates the wrapper: `Unmanaged.release()` — ARC count -1
 // - Each runtime manages its own count independently.
 
-@preconcurrency import ApplyPyFFI
+@preconcurrency import ApplePyFFI
 
 // MARK: - PyBridged Protocol
 
@@ -94,8 +94,8 @@ public enum PyBridge {
     @inlinable
     public static func assertPyAlive(_ pyObj: UnsafeMutablePointer<PyObject>) {
         #if DEBUG
-        let refcnt = ApplyPy_REFCNT(pyObj)
-        precondition(refcnt >= 1, "ApplyPy: Accessing PyObject with refcnt=\(refcnt) — already deallocated?")
+        let refcnt = ApplePy_REFCNT(pyObj)
+        precondition(refcnt >= 1, "ApplePy: Accessing PyObject with refcnt=\(refcnt) — already deallocated?")
         #endif
     }
 
@@ -104,7 +104,7 @@ public enum PyBridge {
     public static func assertSwiftAlive(_ pyObj: UnsafeMutablePointer<PyObject>) {
         #if DEBUG
         let typed = UnsafeMutableRawPointer(pyObj).assumingMemoryBound(to: SwiftPyObject.self)
-        precondition(typed.pointee.swiftPtr != nil, "ApplyPy: Swift object pointer is nil — already released?")
+        precondition(typed.pointee.swiftPtr != nil, "ApplePy: Swift object pointer is nil — already released?")
         #endif
     }
 }

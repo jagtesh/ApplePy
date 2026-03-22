@@ -1,8 +1,8 @@
-// ApplyPy – Core Library
+// ApplePy – Core Library
 // Re-exports FFI and macro declarations, provides type conversions and runtime support.
 
-@_exported import ApplyPyFFI
-@_exported import ApplyPyClient
+@_exported import ApplePyFFI
+@_exported import ApplePyClient
 
 // MARK: - PyObjectPtr
 

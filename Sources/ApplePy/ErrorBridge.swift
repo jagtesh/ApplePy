@@ -1,7 +1,7 @@
-// ApplyPy – Error Bridging
+// ApplePy – Error Bridging
 // Maps Swift errors to Python exceptions and vice versa.
 
-@preconcurrency import ApplyPyFFI
+@preconcurrency import ApplePyFFI
 
 // MARK: - Swift → Python
 
@@ -28,9 +28,9 @@ public struct PythonException: Error, CustomStringConvertible {
 
         let typeName: String
         if let pType = pType {
-            let typeObj = ApplyPy_TYPE(pType)
+            let typeObj = ApplePy_TYPE(pType)
             typeName = String(cString: typeObj!.pointee.tp_name)
-            ApplyPy_DECREF(pType)
+            ApplePy_DECREF(pType)
         } else {
             typeName = "UnknownError"
         }
@@ -43,17 +43,17 @@ public struct PythonException: Error, CustomStringConvertible {
                 } else {
                     message = "(unable to decode error message)"
                 }
-                ApplyPy_DECREF(strRepr)
+                ApplePy_DECREF(strRepr)
             } else {
                 message = "(unable to format error)"
             }
-            ApplyPy_DECREF(pValue)
+            ApplePy_DECREF(pValue)
         } else {
             message = "(no message)"
         }
 
         if let pTraceback = pTraceback {
-            ApplyPy_DECREF(pTraceback)
+            ApplePy_DECREF(pTraceback)
         }
 
         return PythonException(typeName: typeName, message: message)

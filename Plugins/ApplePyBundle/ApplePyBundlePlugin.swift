@@ -1,14 +1,14 @@
-// ApplyPy – SPM Command Plugin for bundling
+// ApplePy – SPM Command Plugin for bundling
 // Renames the built .dylib/.so to the correct CPython extension naming convention
 // and copies it to a dist/ directory.
 //
-// Usage: swift package plugin applypy-bundle --target MyExtension
+// Usage: swift package plugin applepy-bundle --target MyExtension
 
 import PackagePlugin
 import Foundation
 
 @main
-struct ApplyPyBundlePlugin: CommandPlugin {
+struct ApplePyBundlePlugin: CommandPlugin {
     func performCommand(context: PluginContext, arguments: [String]) async throws {
         // Parse arguments
         var targetName: String?
@@ -26,7 +26,7 @@ struct ApplyPyBundlePlugin: CommandPlugin {
         }
 
         guard let targetName = targetName else {
-            Diagnostics.error("Usage: swift package plugin applypy-bundle --target <TargetName> [--module-name <name>]")
+            Diagnostics.error("Usage: swift package plugin applepy-bundle --target <TargetName> [--module-name <name>]")
             return
         }
 

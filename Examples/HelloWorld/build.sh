@@ -10,7 +10,7 @@ cd "$SCRIPT_DIR"
 PYTHON_INCLUDE=$(python3 -c 'import sysconfig; print(sysconfig.get_path("include"))')
 PYTHON_LIBDIR=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')
 PYTHON_TAG=$(python3 -c 'import sys; print(f"cpython-{sys.version_info.major}{sys.version_info.minor}")')
-APPLYPY_FFI="$(cd ../.. && pwd)/Sources/ApplyPyFFI"
+APPLEPY_FFI="$(cd ../.. && pwd)/Sources/ApplePyFFI"
 
 # Determine platform suffix
 case "$(uname -s)" in
@@ -24,13 +24,13 @@ SO_NAME="hello.${PYTHON_TAG}-${PLATFORM}.so"
 echo "Building ${SO_NAME}..."
 echo "  Python include: ${PYTHON_INCLUDE}"
 echo "  Python libdir:  ${PYTHON_LIBDIR}"
-echo "  ApplyPyFFI:     ${APPLYPY_FFI}"
+echo "  ApplePyFFI:     ${APPLEPY_FFI}"
 
 # Create a temporary module map for CPython
 TMPDIR=$(mktemp -d)
 cat > "$TMPDIR/module.modulemap" <<EOF
 module CPythonShim [system] {
-    header "${APPLYPY_FFI}/include/applypy_shim.h"
+    header "${APPLEPY_FFI}/include/applepy_shim.h"
     link "python3.13"
     export *
 }

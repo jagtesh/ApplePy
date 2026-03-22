@@ -1,7 +1,7 @@
 import Testing
 import SwiftSyntaxMacros
 import SwiftSyntaxMacrosTestSupport
-@testable import ApplyPyMacroCore
+@testable import ApplePyMacroCore
 
 let testMacros: [String: Macro.Type] = [
     "PyFunction": PyFunctionMacro.self,
@@ -26,8 +26,8 @@ struct PyFunctionMacroTests {
                 return "Hello, \\(name)!"
             }
 
-            @_cdecl("_applypy_greet")
-            public func _applypy_greet(
+            @_cdecl("_applepy_greet")
+            public func _applepy_greet(
                 _ _self: UnsafeMutablePointer<PyObject>?,
                 _ args: UnsafeMutablePointer<PyObject>?
             ) -> UnsafeMutablePointer<PyObject>? {
@@ -49,11 +49,11 @@ struct PyFunctionMacroTests {
                 return _result.intoPython(py: _py)
             }
 
-            public let _applypy_methoddef_greet: PyMethodDef = {
+            public let _applepy_methoddef_greet: PyMethodDef = {
                 let name: UnsafePointer<CChar> = "greet".withCString {
                     UnsafePointer(strdup($0)!)
                 }
-                return PyMethodDef(ml_name: name, ml_meth: _applypy_greet, ml_flags: METH_VARARGS, ml_doc: nil)
+                return PyMethodDef(ml_name: name, ml_meth: _applepy_greet, ml_flags: METH_VARARGS, ml_doc: nil)
             }()
             """,
             macros: testMacros
@@ -74,8 +74,8 @@ struct PyFunctionMacroTests {
                 return "Hello!"
             }
 
-            @_cdecl("_applypy_hello")
-            public func _applypy_hello(
+            @_cdecl("_applepy_hello")
+            public func _applepy_hello(
                 _ _self: UnsafeMutablePointer<PyObject>?,
                 _ args: UnsafeMutablePointer<PyObject>?
             ) -> UnsafeMutablePointer<PyObject>? {
@@ -84,11 +84,11 @@ struct PyFunctionMacroTests {
                 return _result.intoPython(py: _py)
             }
 
-            public let _applypy_methoddef_hello: PyMethodDef = {
+            public let _applepy_methoddef_hello: PyMethodDef = {
                 let name: UnsafePointer<CChar> = "hello".withCString {
                     UnsafePointer(strdup($0)!)
                 }
-                return PyMethodDef(ml_name: name, ml_meth: _applypy_hello, ml_flags: METH_NOARGS, ml_doc: nil)
+                return PyMethodDef(ml_name: name, ml_meth: _applepy_hello, ml_flags: METH_NOARGS, ml_doc: nil)
             }()
             """,
             macros: testMacros
@@ -107,21 +107,21 @@ struct PyFunctionMacroTests {
             func doNothing() {
             }
 
-            @_cdecl("_applypy_doNothing")
-            public func _applypy_doNothing(
+            @_cdecl("_applepy_doNothing")
+            public func _applepy_doNothing(
                 _ _self: UnsafeMutablePointer<PyObject>?,
                 _ args: UnsafeMutablePointer<PyObject>?
             ) -> UnsafeMutablePointer<PyObject>? {
                 let _py = PythonHandle()
                 doNothing()
-                return ApplyPy_None()
+                return ApplePy_None()
             }
 
-            public let _applypy_methoddef_doNothing: PyMethodDef = {
+            public let _applepy_methoddef_doNothing: PyMethodDef = {
                 let name: UnsafePointer<CChar> = "doNothing".withCString {
                     UnsafePointer(strdup($0)!)
                 }
-                return PyMethodDef(ml_name: name, ml_meth: _applypy_doNothing, ml_flags: METH_NOARGS, ml_doc: nil)
+                return PyMethodDef(ml_name: name, ml_meth: _applepy_doNothing, ml_flags: METH_NOARGS, ml_doc: nil)
             }()
             """,
             macros: testMacros

@@ -1,4 +1,4 @@
-// ApplyPy – @PyClass Macro Implementation
+// ApplePy – @PyClass Macro Implementation
 // Generates: PyObject storage struct, tp_new, tp_init, tp_dealloc, PyType_Spec, and registration.
 
 import SwiftSyntax
@@ -82,7 +82,7 @@ public struct PyClassMacro: MemberMacro {
             """)
 
         // 4. Generate tp_new
-        let tpNewName = "_applypy_\(typeName)_tp_new"
+        let tpNewName = "_applepy_\(typeName)_tp_new"
         decls.append("""
             @_cdecl("\(raw: tpNewName)")
             public static func _tp_new(
@@ -99,7 +99,7 @@ public struct PyClassMacro: MemberMacro {
             """)
 
         // 5. Generate tp_init
-        let tpInitName = "_applypy_\(typeName)_tp_init"
+        let tpInitName = "_applepy_\(typeName)_tp_init"
         let initBody = generateInitBody(typeName: typeName, params: initParams)
         decls.append("""
             @_cdecl("\(raw: tpInitName)")
@@ -115,19 +115,19 @@ public struct PyClassMacro: MemberMacro {
             """)
 
         // 6. Generate tp_dealloc
-        let tpDeallocName = "_applypy_\(typeName)_tp_dealloc"
+        let tpDeallocName = "_applepy_\(typeName)_tp_dealloc"
         decls.append("""
             @_cdecl("\(raw: tpDeallocName)")
             public static func _tp_dealloc(_ self_: UnsafeMutablePointer<PyObject>?) {
                 guard let self_ = self_ else { return }
                 _releaseSwiftValue(self_)
-                let type = ApplyPy_TYPE(self_)
+                let type = ApplePy_TYPE(self_)
                 type?.pointee.tp_free?(UnsafeMutableRawPointer(self_))
             }
             """)
 
         // 7. Generate tp_repr (if declared)
-        let tpReprName = "_applypy_\(typeName)_tp_repr"
+        let tpReprName = "_applepy_\(typeName)_tp_repr"
         if hasRepr {
             decls.append("""
                 @_cdecl("\(raw: tpReprName)")
@@ -144,7 +144,7 @@ public struct PyClassMacro: MemberMacro {
         let regularMethods = methods.filter { !$0.pythonName.hasPrefix("__") }
         var methodTableEntries: [String] = []
         for method in regularMethods {
-            let wrapperName = "_applypy_\(typeName)_\(method.swiftName)"
+            let wrapperName = "_applepy_\(typeName)_\(method.swiftName)"
             let flags = method.paramCount == 0 ? "METH_NOARGS" : "METH_VARARGS"
             methodTableEntries.append("""
                 PyMethodDef(
@@ -210,7 +210,7 @@ public struct PyClassMacro: MemberMacro {
                 guard let typeObj = PyType_FromSpec(&_pyTypeSpec) else { return false }
                 let name: UnsafePointer<CChar> = "\(raw: typeName)".withCString { UnsafePointer(strdup($0)!) }
                 if PyModule_AddObject(module, name, typeObj) < 0 {
-                    ApplyPy_DECREF(typeObj)
+                    ApplePy_DECREF(typeObj)
                     return false
                 }
                 return true

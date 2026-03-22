@@ -1,6 +1,6 @@
 import Testing
-@testable import ApplyPy
-import ApplyPyFFI
+@testable import ApplePy
+import ApplePyFFI
 
 /// Ensure Python is initialized exactly once.
 /// After initialization, release the GIL so that test threads can acquire it.
@@ -32,7 +32,7 @@ struct TypeConversionTests {
             let original = 42
             let pyObj = original.intoPython(py: py)!
             let restored = try Int.fromPython(pyObj, py: py)
-            ApplyPy_DECREF(pyObj)
+            ApplePy_DECREF(pyObj)
             #expect(restored == original)
         }
     }
@@ -43,7 +43,7 @@ struct TypeConversionTests {
             let original = -9999
             let pyObj = original.intoPython(py: py)!
             let restored = try Int.fromPython(pyObj, py: py)
-            ApplyPy_DECREF(pyObj)
+            ApplePy_DECREF(pyObj)
             #expect(restored == original)
         }
     }
@@ -51,10 +51,10 @@ struct TypeConversionTests {
     @Test("String roundtrip")
     func stringRoundtrip() throws {
         try withPython { py in
-            let original = "Hello, ApplyPy! 🐍🍎"
+            let original = "Hello, ApplePy! 🐍🍎"
             let pyObj = original.intoPython(py: py)!
             let restored = try String.fromPython(pyObj, py: py)
-            ApplyPy_DECREF(pyObj)
+            ApplePy_DECREF(pyObj)
             #expect(restored == original)
         }
     }
@@ -66,8 +66,8 @@ struct TypeConversionTests {
             let pyFalse = false.intoPython(py: py)!
             let restoredTrue = try Bool.fromPython(pyTrue, py: py)
             let restoredFalse = try Bool.fromPython(pyFalse, py: py)
-            ApplyPy_DECREF(pyTrue)
-            ApplyPy_DECREF(pyFalse)
+            ApplePy_DECREF(pyTrue)
+            ApplePy_DECREF(pyFalse)
             #expect(restoredTrue == true)
             #expect(restoredFalse == false)
         }
@@ -79,7 +79,7 @@ struct TypeConversionTests {
             let original = 3.14159
             let pyObj = original.intoPython(py: py)!
             let restored = try Double.fromPython(pyObj, py: py)
-            ApplyPy_DECREF(pyObj)
+            ApplePy_DECREF(pyObj)
             #expect(restored == original)
         }
     }
@@ -90,7 +90,7 @@ struct TypeConversionTests {
             let original: Float = 2.718
             let pyObj = original.intoPython(py: py)!
             let restored = try Float.fromPython(pyObj, py: py)
-            ApplyPy_DECREF(pyObj)
+            ApplePy_DECREF(pyObj)
             #expect(abs(restored - original) < 0.0001)
         }
     }
@@ -101,7 +101,7 @@ struct TypeConversionTests {
             let original = [1, 2, 3, 4, 5]
             let pyObj = original.intoPython(py: py)!
             let restored = try [Int].fromPython(pyObj, py: py)
-            ApplyPy_DECREF(pyObj)
+            ApplePy_DECREF(pyObj)
             #expect(restored == original)
         }
     }
@@ -112,7 +112,7 @@ struct TypeConversionTests {
             let original: [String: Int] = ["a": 1, "b": 2, "c": 3]
             let pyObj = original.intoPython(py: py)!
             let restored = try [String: Int].fromPython(pyObj, py: py)
-            ApplyPy_DECREF(pyObj)
+            ApplePy_DECREF(pyObj)
             #expect(restored == original)
         }
     }
@@ -123,7 +123,7 @@ struct TypeConversionTests {
             let original: Int? = nil
             let pyObj = original.intoPython(py: py)!
             let restored = try Int?.fromPython(pyObj, py: py)
-            ApplyPy_DECREF(pyObj)
+            ApplePy_DECREF(pyObj)
             #expect(restored == nil)
         }
     }
@@ -134,7 +134,7 @@ struct TypeConversionTests {
             let original: Int? = 42
             let pyObj = original.intoPython(py: py)!
             let restored = try Int?.fromPython(pyObj, py: py)
-            ApplyPy_DECREF(pyObj)
+            ApplePy_DECREF(pyObj)
             #expect(restored == 42)
         }
     }
@@ -143,7 +143,7 @@ struct TypeConversionTests {
     func typeMismatchThrows() throws {
         try withPython { py in
             let pyStr = "not an int".intoPython(py: py)!
-            defer { ApplyPy_DECREF(pyStr) }
+            defer { ApplePy_DECREF(pyStr) }
             #expect(throws: PythonConversionError.self) {
                 _ = try Int.fromPython(pyStr, py: py)
             }

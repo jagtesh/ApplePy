@@ -1,13 +1,13 @@
-// ApplyPy – Macro Plugin Entry Point
-// Thin wrapper: registers macros from ApplyPyMacroCore with the compiler.
+// ApplePy – Macro Plugin Entry Point
+// Thin wrapper: registers macros from ApplePyMacroCore with the compiler.
 
 import SwiftCompilerPlugin
 import SwiftSyntax
 import SwiftSyntaxMacros
-@_exported import ApplyPyMacroCore
+@_exported import ApplePyMacroCore
 
 @main
-struct ApplyPyMacroPlugin: CompilerPlugin {
+struct ApplePyMacroPlugin: CompilerPlugin {
     let providingMacros: [Macro.Type] = [
         PyFunctionMacro.self,
         PyClassMacro.self,
