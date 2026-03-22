@@ -1,0 +1,7 @@
+applepy_cli.py
+pyproject.toml
+applepy_cli.egg-info/PKG-INFO
+applepy_cli.egg-info/SOURCES.txt
+applepy_cli.egg-info/dependency_links.txt
+applepy_cli.egg-info/entry_points.txt
+applepy_cli.egg-info/top_level.txt

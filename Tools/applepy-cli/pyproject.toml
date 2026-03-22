@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "applepy-cli"
+version = "0.1.0"
+description = "Build tool for ApplePy — scaffold, build, and publish Swift-powered Python packages"
+license = {text = "BSD-3-Clause"}
+authors = [{name = "Jagtesh Chadha"}]
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Swift",
+    "Topic :: Software Development :: Build Tools",
+]
+
+[project.scripts]
+applepy = "applepy_cli:main"
+
+[tool.setuptools]
+py-modules = ["applepy_cli"]

@@ -1,0 +1,2 @@
+[console_scripts]
+applepy = applepy_cli:main
