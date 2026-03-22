@@ -57,18 +57,20 @@ public struct PyModuleMacro: PeerMacro {
             }
         }
 
-        // Build PyMethodDef entries
-        var methodTableLines: [String] = []
+        // Build heap-allocated method table entries
+        // Each entry is assigned to methodsPtr[idx] then idx is incremented
+        let methodEntryCount = functionNames.count + 1  // +1 for sentinel nil entry
+        var heapMethodAssignments: [String] = []
         for funcName in functionNames {
             let wrapperName = "_applepy_\(funcName)"
-            methodTableLines.append("""
-                {
+            heapMethodAssignments.append("""
+                do {
                     let n: UnsafePointer<CChar> = "\(funcName)".withCString { UnsafePointer(strdup($0)!) }
-                    return PyMethodDef(ml_name: n, ml_meth: \(wrapperName), ml_flags: METH_VARARGS, ml_doc: nil)
-                }(),
+                    methodsPtr[idx] = PyMethodDef(ml_name: n, ml_meth: \(wrapperName), ml_flags: METH_VARARGS, ml_doc: nil)
+                    idx += 1
+                }
             """)
         }
-        methodTableLines.append("PyMethodDef(ml_name: nil, ml_meth: nil, ml_flags: 0, ml_doc: nil),")
 
         // Build type registration calls
         var typeRegCalls: [String] = []
@@ -87,15 +89,22 @@ public struct PyModuleMacro: PeerMacro {
 
         // Single generated function that contains everything inline
         // The @_cdecl provides the C symbol name, Swift name uses _applepy_ prefix
+        //
+        // CRITICAL: PyModuleDef and method table must outlive the function call.
+        // Python holds references to them for the module's lifetime (= process lifetime).
+        // We heap-allocate them — they're intentionally never freed.
         let initDecl: DeclSyntax = """
             @_cdecl("\(raw: initFuncName)")
             func _applepy_\(raw: hostName)() -> UnsafeMutablePointer<PyObject>? {
-                var methods: [PyMethodDef] = [
-                    \(raw: methodTableLines.joined(separator: "\n        "))
-                ]
-                let name: UnsafePointer<CChar> = "\(raw: moduleName)".withCString { UnsafePointer(strdup($0)!) }
-                var moduleDef = ApplePy_MakeModuleDef(name, nil, -1, &methods)
-                guard let module = ApplePy_ModuleCreate(&moduleDef) else { return nil }
+                let methodCount = \(raw: methodEntryCount)
+                let methodsPtr = UnsafeMutablePointer<PyMethodDef>.allocate(capacity: methodCount)
+                var idx = 0
+                \(raw: heapMethodAssignments.joined(separator: "\n    "))
+                methodsPtr[idx] = PyMethodDef(ml_name: nil, ml_meth: nil, ml_flags: 0, ml_doc: nil)
+                let namePtr: UnsafePointer<CChar> = "\(raw: moduleName)".withCString { UnsafePointer(strdup($0)!) }
+                let defPtr = UnsafeMutablePointer<PyModuleDef>.allocate(capacity: 1)
+                defPtr.pointee = ApplePy_MakeModuleDef(namePtr, nil, -1, methodsPtr)
+                guard let module = ApplePy_ModuleCreate(defPtr) else { return nil }
                 \(raw: typeRegCalls.joined(separator: "\n    "))
                 return module
             }
