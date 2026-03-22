@@ -15,3 +15,9 @@ public macro pymodule(_ name: String, types: [Any.Type] = [], functions: [Any] =
 
 @attached(member, names: arbitrary)
 public macro PyEnum() = #externalMacro(module: "ApplePyMacros", type: "PyEnumMacro")
+
+@attached(peer, names: arbitrary)
+public macro PyProperty() = #externalMacro(module: "ApplePyMacros", type: "PyPropertyMacro")
+
+@attached(peer, names: arbitrary)
+public macro PyStaticMethod() = #externalMacro(module: "ApplePyMacros", type: "PyStaticMethodMacro")

@@ -14,5 +14,7 @@ struct ApplePyMacroPlugin: CompilerPlugin {
         PyMethodMacro.self,
         PyModuleMacro.self,
         PyEnumMacro.self,
+        PyPropertyMacro.self,
+        PyStaticMethodMacro.self,
     ]
 }
