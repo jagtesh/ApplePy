@@ -30,10 +30,21 @@ let package = Package(
             path: "Sources/ApplyPy"
         ),
 
-        // ── Macro Implementations (SwiftSyntax-based) ───────────────
+        // ── Macro Logic (importable regular library) ────────────────
+        .target(
+            name: "ApplyPyMacroCore",
+            dependencies: [
+                .product(name: "SwiftSyntax", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+            ],
+            path: "Sources/ApplyPyMacroCore"
+        ),
+
+        // ── Macro Plugin (thin wrapper, re-exports core) ────────────
         .macro(
             name: "ApplyPyMacros",
             dependencies: [
+                "ApplyPyMacroCore",
                 .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
                 .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
             ],
@@ -53,6 +64,7 @@ let package = Package(
             dependencies: [
                 "ApplyPy",
                 "ApplyPyClient",
+                "ApplyPyMacroCore",
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
             ]
         ),
