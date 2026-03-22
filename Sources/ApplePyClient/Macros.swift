@@ -10,8 +10,8 @@ public macro PyFunction() = #externalMacro(module: "ApplePyMacros", type: "PyFun
 @attached(peer, names: prefixed(_applepy_))
 public macro PyMethod(_ pythonName: String? = nil) = #externalMacro(module: "ApplePyMacros", type: "PyMethodMacro")
 
-@freestanding(declaration, names: prefixed(_applepy_))
-public macro pymodule(_ name: String, types: [Any.Type] = [], functions: [Any] = []) = #externalMacro(module: "ApplePyMacros", type: "PyModuleMacro")
+@attached(peer, names: prefixed(_applepy_))
+public macro PyModule(_ name: String, types: [Any.Type] = [], functions: [Any] = []) = #externalMacro(module: "ApplePyMacros", type: "PyModuleMacro")
 
 @attached(member, names: arbitrary)
 public macro PyEnum() = #externalMacro(module: "ApplePyMacros", type: "PyEnumMacro")

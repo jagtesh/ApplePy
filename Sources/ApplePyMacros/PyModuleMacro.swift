@@ -1,25 +1,37 @@
-// ApplePy – #pymodule Macro Implementation
+// ApplePy – @PyModule Macro Implementation
 // Generates PyInit_<name> entry point that creates the module and registers types/functions.
+//
+// Follows PyO3's pattern: @PyModule is attached to a function, not freestanding.
+// The host function provides the declaration name for `names: prefixed(_applepy_)`.
+//
+// Usage:
+//   @PyModule("mylib", functions: [greet, add])
+//   func mylib() {}
 
 import SwiftSyntax
 import SwiftSyntaxMacros
 
-public struct PyModuleMacro: DeclarationMacro {
+public struct PyModuleMacro: PeerMacro {
     public static func expansion(
-        of node: some FreestandingMacroExpansionSyntax,
+        of node: AttributeSyntax,
+        providingPeersOf declaration: some DeclSyntaxProtocol,
         in context: some MacroExpansionContext
     ) throws -> [DeclSyntax] {
-        // Parse arguments: #pymodule("name", types: [...], functions: [...])
-        let argList = node.arguments
+        guard let funcDecl = declaration.as(FunctionDeclSyntax.self) else {
+            throw MacroError("@PyModule can only be applied to functions")
+        }
 
-        // First positional argument: module name
+        guard let argList = node.arguments?.as(LabeledExprListSyntax.self) else {
+            throw MacroError("@PyModule requires arguments")
+        }
+
         guard let firstArg = argList.first,
               let strLiteral = firstArg.expression.as(StringLiteralExprSyntax.self) else {
-            throw MacroError("#pymodule requires a string literal module name")
+            throw MacroError("@PyModule requires a string literal module name")
         }
         let moduleName = strLiteral.segments.trimmedDescription
+        let hostName = funcDecl.name.text
 
-        // Collect type names from `types:` arg
         var typeNames: [String] = []
         var functionNames: [String] = []
 
@@ -27,7 +39,6 @@ public struct PyModuleMacro: DeclarationMacro {
             if arg.label?.text == "types",
                let arrayExpr = arg.expression.as(ArrayExprSyntax.self) {
                 for element in arrayExpr.elements {
-                    // Expect Type.self expressions
                     if let memberAccess = element.expression.as(MemberAccessExprSyntax.self),
                        memberAccess.declName.baseName.text == "self",
                        let base = memberAccess.base {
@@ -46,16 +57,16 @@ public struct PyModuleMacro: DeclarationMacro {
             }
         }
 
-        // Build method table entries from @PyFunction-annotated functions
-        var methodEntries: [String] = []
-        for funcName in functionNames {
-            methodEntries.append("_applepy_methoddef_\(funcName)")
-        }
-
-        // Build the method table
+        // Build PyMethodDef entries
         var methodTableLines: [String] = []
-        for entry in methodEntries {
-            methodTableLines.append("\(entry),")
+        for funcName in functionNames {
+            let wrapperName = "_applepy_\(funcName)"
+            methodTableLines.append("""
+                {
+                    let n: UnsafePointer<CChar> = "\(funcName)".withCString { UnsafePointer(strdup($0)!) }
+                    return PyMethodDef(ml_name: n, ml_meth: \(wrapperName), ml_flags: METH_VARARGS, ml_doc: nil)
+                }(),
+            """)
         }
         methodTableLines.append("PyMethodDef(ml_name: nil, ml_meth: nil, ml_flags: 0, ml_doc: nil),")
 
@@ -70,35 +81,26 @@ public struct PyModuleMacro: DeclarationMacro {
             """)
         }
 
+        // All generated names use the _applepy_ prefix + host function name
+        // This satisfies `names: prefixed(_applepy_)` constraint
         let initFuncName = "PyInit_\(moduleName)"
 
-        var decls: [DeclSyntax] = []
-
-        // Generate the method table
-        decls.append("""
-            private var _applepy_module_methods: [PyMethodDef] = [
-                \(raw: methodTableLines.joined(separator: "\n    "))
-            ]
-            """)
-
-        // Generate module def (global to survive the function scope)
-        decls.append("""
-            private var _applepy_module_def: PyModuleDef = {
-                let name: UnsafePointer<CChar> = "\(raw: moduleName)".withCString { UnsafePointer(strdup($0)!) }
-                return ApplePy_MakeModuleDef(name, nil, -1, &_applepy_module_methods)
-            }()
-            """)
-
-        // Generate PyInit function
-        decls.append("""
+        // Single generated function that contains everything inline
+        // The @_cdecl provides the C symbol name, Swift name uses _applepy_ prefix
+        let initDecl: DeclSyntax = """
             @_cdecl("\(raw: initFuncName)")
-            public func \(raw: initFuncName)() -> UnsafeMutablePointer<PyObject>? {
-                guard let module = ApplePy_ModuleCreate(&_applepy_module_def) else { return nil }
+            func _applepy_\(raw: hostName)() -> UnsafeMutablePointer<PyObject>? {
+                var methods: [PyMethodDef] = [
+                    \(raw: methodTableLines.joined(separator: "\n        "))
+                ]
+                let name: UnsafePointer<CChar> = "\(raw: moduleName)".withCString { UnsafePointer(strdup($0)!) }
+                var moduleDef = ApplePy_MakeModuleDef(name, nil, -1, &methods)
+                guard let module = ApplePy_ModuleCreate(&moduleDef) else { return nil }
                 \(raw: typeRegCalls.joined(separator: "\n    "))
                 return module
             }
-            """)
+            """
 
-        return decls
+        return [initDecl]
     }
 }
