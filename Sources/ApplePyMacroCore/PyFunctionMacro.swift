@@ -26,32 +26,76 @@ public struct PyFunctionMacro: PeerMacro {
         var callArgs: [String] = []
         let paramCount = params.count
 
+        // Track param info: (index, name, label, typeName, defaultValue?, isUnderscoreLabel)
+        var paramIndices: [Int] = []
+        var paramNames: [String] = []
+        var paramLabels: [String] = []
+        var paramTypes: [String] = []
+        var paramDefaults: [String?] = []
+        var paramIsUnderscore: [Bool] = []
+
+        for (i, param) in params.enumerated() {
+            paramIndices.append(i)
+            paramNames.append(param.secondName?.text ?? param.firstName.text)
+            paramLabels.append(param.firstName.text)
+            paramTypes.append(param.type.trimmedDescription)
+            paramDefaults.append(param.defaultValue?.value.trimmedDescription)
+            paramIsUnderscore.append(param.firstName.text == "_")
+        }
+
+        let requiredCount = paramDefaults.filter { $0 == nil }.count
+
         if paramCount > 0 {
-            unpackLines.append("""
-                guard let args = args else {
-                    PyErr_SetString(PyExc_TypeError, "\\(funcName)() requires arguments")
-                    return nil
-                }
-                let _nArgs = PyTuple_Size(args)
-                guard _nArgs == \(paramCount) else {
-                    PyErr_SetString(PyExc_TypeError, "\\(funcName)() takes exactly \(paramCount) argument(s)")
-                    return nil
-                }
-            """)
-
-            for (i, param) in params.enumerated() {
-                let paramName = param.secondName?.text ?? param.firstName.text
-                let typeName = param.type.trimmedDescription
-
+            if requiredCount == paramCount {
+                // No defaults — strict checking (original behavior)
                 unpackLines.append("""
-                    guard let _pyArg\(i) = PyTuple_GetItem(args, \(i)) else { return nil }
-                    let \(paramName): \(typeName) = try \(typeName).fromPython(_pyArg\(i), py: _py)
+                    guard let args = args else {
+                        PyErr_SetString(PyExc_TypeError, "\\(funcName)() requires arguments")
+                        return nil
+                    }
+                    let _nArgs = PyTuple_Size(args)
+                    guard _nArgs == \(paramCount) else {
+                        PyErr_SetString(PyExc_TypeError, "\\(funcName)() takes exactly \(paramCount) argument(s)")
+                        return nil
+                    }
                 """)
+            } else {
+                // Has defaults — flexible arg count
+                unpackLines.append("""
+                    let _nArgs: Py_ssize_t = args != nil ? PyTuple_Size(args!) : 0
+                    guard _nArgs >= \(requiredCount) && _nArgs <= \(paramCount) else {
+                        PyErr_SetString(PyExc_TypeError, "\\(funcName)() takes \(requiredCount) to \(paramCount) argument(s)")
+                        return nil
+                    }
+                """)
+            }
 
-                if param.firstName.text == "_" {
-                    callArgs.append(paramName)
+            for idx in 0..<paramCount {
+                let pName = paramNames[idx]
+                let pType = paramTypes[idx]
+                let pIdx = paramIndices[idx]
+                if let defaultValue = paramDefaults[idx] {
+                    // Optional param: use Python arg if provided, else fallback to Swift default
+                    unpackLines.append("""
+                        let \(pName): \(pType)
+                        if _nArgs > \(pIdx), let _pyArg\(pIdx) = PyTuple_GetItem(args!, \(pIdx)) {
+                            \(pName) = try \(pType).fromPython(_pyArg\(pIdx), py: _py)
+                        } else {
+                            \(pName) = \(defaultValue)
+                        }
+                    """)
                 } else {
-                    callArgs.append("\(param.firstName.text): \(paramName)")
+                    // Required param
+                    unpackLines.append("""
+                        guard let _pyArg\(pIdx) = PyTuple_GetItem(args, \(pIdx)) else { return nil }
+                        let \(pName): \(pType) = try \(pType).fromPython(_pyArg\(pIdx), py: _py)
+                    """)
+                }
+
+                if paramIsUnderscore[idx] {
+                    callArgs.append(pName)
+                } else {
+                    callArgs.append("\(paramLabels[idx]): \(pName)")
                 }
             }
         }

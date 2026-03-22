@@ -14,28 +14,29 @@ public typealias PyObjectPtr = UnsafeMutablePointer<PyObject>?
 
 // MARK: - PythonHandle (GIL Token)
 
-/// A token proving that the current thread holds the Python GIL.
+/// A lightweight token proving that the current thread holds the Python GIL.
 /// All functions that interact with Python objects should accept a `PythonHandle`
 /// to prove the GIL is held at the call site.
 ///
+/// `PythonHandle` is copyable for protocol compatibility. For scope-enforced
+/// GIL management, use `GILGuard.withGIL` which provides both a `GILGuard`
+/// (non-copyable, owns the GIL) and a `PythonHandle` (for API calls).
+///
 /// ## Usage
 /// ```swift
-/// PythonHandle.withGIL { py in
+/// GILGuard.withGIL { guard, py in
 ///     let result = myFunc.intoPython(py: py)
-///     // ... use Python objects safely ...
+///     // guard ensures GIL is held for this entire scope
+///     // py can be passed to FromPyObject/IntoPyObject methods
 /// }
 /// ```
-///
-/// ## Thread Safety
-/// The GIL is acquired on the current thread. Do not pass `PythonHandle`
-/// to other threads — use `allowThreads` to release the GIL for CPU-bound work.
 public struct PythonHandle: Sendable {
-    /// Internal-only initializer — users get this via `withGIL`.
+    /// Internal-only initializer — users get this via `GILGuard.withGIL`.
     /// Direct construction is allowed for macro-generated code.
     public init() {}
 
     /// Acquire the GIL and execute a closure.
-    /// This is the primary entry point for all Python operations.
+    /// For stricter scope enforcement, prefer `GILGuard.withGIL`.
     public static func withGIL<T>(_ body: (PythonHandle) throws -> T) rethrows -> T {
         let gstate = PyGILState_Ensure()
         defer { PyGILState_Release(gstate) }
@@ -50,6 +51,62 @@ public struct PythonHandle: Sendable {
         return try body()
     }
 }
+
+// MARK: - GILGuard (~Copyable)
+
+/// A non-copyable GIL ownership token. When this value exists, the GIL is held.
+/// When it is consumed/destroyed, the GIL is released.
+///
+/// `GILGuard` cannot be copied, moved out of scope, or stored — it enforces
+/// that Python object access happens only within the `withGIL` closure.
+///
+/// ```swift
+/// GILGuard.withGIL { guard, py in
+///     // guard: GILGuard — proves GIL is held, can't escape
+///     // py: PythonHandle — lightweight token for API calls
+///     let obj = value.intoPython(py: py)
+/// }
+/// // GIL automatically released here
+/// ```
+public struct GILGuard: ~Copyable {
+    @usableFromInline
+    let gstate: PyGILState_STATE
+
+    @usableFromInline
+    init(gstate: PyGILState_STATE) {
+        self.gstate = gstate
+    }
+
+    deinit {
+        PyGILState_Release(gstate)
+    }
+
+    /// Acquire the GIL and execute a closure with both a GILGuard and PythonHandle.
+    /// The GILGuard cannot escape the closure — compile-time enforcement.
+    /// The PythonHandle is a lightweight token for passing to protocol methods.
+    @inlinable
+    public static func withGIL<T>(_ body: (borrowing GILGuard, PythonHandle) throws -> T) rethrows -> T {
+        let guard_ = GILGuard(gstate: PyGILState_Ensure())
+        return try body(guard_, PythonHandle())
+    }
+
+    /// Release the GIL temporarily for CPU-bound work.
+    @inlinable
+    public borrowing func allowThreads<T>(_ body: () throws -> T) rethrows -> T {
+        let save = PyEval_SaveThread()
+        defer { PyEval_RestoreThread(save) }
+        return try body()
+    }
+
+    /// Assert the GIL is held (debug builds only).
+    @inlinable
+    public borrowing func assertGILHeld() {
+        #if DEBUG
+        assert(PyGILState_Check() != 0, "GIL is not held on current thread")
+        #endif
+    }
+}
+
 
 // MARK: - @PythonActor
 
