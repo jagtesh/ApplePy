@@ -68,5 +68,21 @@ let package = Package(
                 .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
             ]
         ),
+
+        // ── Plugins ─────────────────────────────────────────────────
+        .plugin(
+            name: "ApplePyBuild",
+            capability: .buildTool(),
+            path: "Plugins/ApplePyBuild"
+        ),
+
+        .plugin(
+            name: "ApplePyBundle",
+            capability: .command(
+                intent: .custom(verb: "applepy-bundle", description: "Bundle a Swift extension as a Python-importable .so"),
+                permissions: [.writeToPackageDirectory(reason: "Copy the built .so to dist/")]
+            ),
+            path: "Plugins/ApplePyBundle"
+        ),
     ]
 )
