@@ -12,3 +12,6 @@ public macro PyMethod(_ pythonName: String? = nil) = #externalMacro(module: "App
 
 @freestanding(declaration, names: arbitrary)
 public macro pymodule(_ name: String, types: [Any.Type] = [], functions: [Any] = []) = #externalMacro(module: "ApplePyMacros", type: "PyModuleMacro")
+
+@attached(member, names: arbitrary)
+public macro PyEnum() = #externalMacro(module: "ApplePyMacros", type: "PyEnumMacro")
