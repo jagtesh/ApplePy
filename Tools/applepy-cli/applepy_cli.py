@@ -12,6 +12,8 @@ Commands:
 """
 import argparse
 import os
+import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -20,6 +22,11 @@ from pathlib import Path
 from textwrap import dedent
 
 __version__ = "0.1.0"
+
+# ApplePy Swift package — used when generating Package.swift for new projects
+APPLEPY_GITHUB_URL = "https://github.com/jagtesh/ApplePy.git"
+APPLEPY_MIN_VERSION = "1.0.0"
+
 
 # ── Templates ───────────────────────────────────────────────
 
@@ -136,7 +143,33 @@ for _attr in dir(_native):
 __version__ = "0.1.0"
 '''
 
-PACKAGE_SWIFT_TEMPLATE = '''\
+# Two Package.swift templates: one for GitHub (default), one for local dev
+PACKAGE_SWIFT_TEMPLATE_GITHUB = '''\
+// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "{swift_target}",
+    platforms: [.macOS(.v14)],
+    products: [
+        .library(name: "{swift_target}", type: .dynamic, targets: ["{swift_target}"]),
+    ],
+    dependencies: [
+        .package(url: "{applepy_url}", from: "{applepy_version}"),
+    ],
+    targets: [
+        .target(
+            name: "{swift_target}",
+            dependencies: [
+                .product(name: "ApplePy", package: "ApplePy"),
+                .product(name: "ApplePyClient", package: "ApplePy"),
+            ]
+        ),
+    ]
+)
+'''
+
+PACKAGE_SWIFT_TEMPLATE_LOCAL = '''\
 // swift-tools-version: 6.0
 import PackageDescription
 
@@ -237,6 +270,88 @@ __pycache__/
 '''
 
 
+# ── Helpers ─────────────────────────────────────────────────
+
+def _get_platform_tag():
+    """Get the wheel platform tag for the current macOS + arch."""
+    # e.g., macosx_14_0_arm64
+    mac_ver = platform.mac_ver()[0]  # "14.3.1"
+    parts = mac_ver.split(".")
+    major = parts[0] if parts else "14"
+    minor = parts[1] if len(parts) > 1 else "0"
+    arch = platform.machine()  # "arm64" or "x86_64"
+    return f"macosx_{major}_{minor}_{arch}"
+
+
+def _find_applepy():
+    """Try to find a local ApplePy package."""
+    cli_dir = Path(__file__).resolve().parent
+    candidates = [
+        cli_dir.parent.parent,                    # Tools/applepy-cli -> ApplePy
+        cli_dir.parent.parent.parent / "ApplePy", # sibling in workspace
+        Path.cwd().parent / "ApplePy",
+    ]
+    for p in candidates:
+        if (p / "Package.swift").exists() and (p / "Sources").exists():
+            return p
+    return None
+
+
+def _load_project(project_dir: Path) -> dict:
+    """Load project configuration from pyproject.toml."""
+    pyproject = project_dir / "pyproject.toml"
+    if not pyproject.exists():
+        print(f"❌ No pyproject.toml found. Are you in a project directory?")
+        sys.exit(1)
+
+    name = None
+    content = pyproject.read_text()
+    for line in content.splitlines():
+        line = line.strip()
+        if line.startswith("name") and "=" in line:
+            val = line.split("=", 1)[1].strip().strip('"').strip("'")
+            name = val
+            break
+
+    if not name:
+        print(f"❌ Could not find project name in pyproject.toml")
+        sys.exit(1)
+
+    # Derive swift target from name
+    swift_target = "".join(word.capitalize() for word in name.split("_")) or name.capitalize()
+
+    # Check if swift/Package.swift has a different target name
+    pkg_swift = project_dir / "swift" / "Package.swift"
+    if pkg_swift.exists():
+        pkg_content = pkg_swift.read_text()
+        match = re.search(r'Package\(\s*name:\s*"([^"]+)"', pkg_content)
+        if match:
+            swift_target = match.group(1)
+
+    return {"name": name, "swift_target": swift_target}
+
+
+def _swift_build(swift_dir: Path, swift_target: str):
+    """Run swift build and return the path to the built dylib."""
+    pkg_config_path = sysconfig.get_config_var("LIBPC") or ""
+    env = os.environ.copy()
+    env["PKG_CONFIG_PATH"] = pkg_config_path
+
+    print(f"🔨 Building {swift_target}...")
+    try:
+        subprocess.check_call(["swift", "build"], cwd=swift_dir, env=env)
+    except subprocess.CalledProcessError:
+        print(f"❌ Swift build failed")
+        sys.exit(1)
+
+    dylib = swift_dir / ".build" / "debug" / f"lib{swift_target}.dylib"
+    if not dylib.exists():
+        print(f"❌ Expected {dylib} not found")
+        sys.exit(1)
+
+    return dylib
+
+
 # ── Commands ────────────────────────────────────────────────
 
 def cmd_new(args):
@@ -244,7 +359,7 @@ def cmd_new(args):
     name = args.name.lower().replace("-", "_").replace(" ", "_")
     swift_target = "".join(word.capitalize() for word in name.split("_")) or name.capitalize()
     project_dir = Path(args.name)
-    description = args.description or f"A Swift-powered Python package"
+    description = args.description or "A Swift-powered Python package"
 
     if project_dir.exists():
         print(f"❌ Directory '{args.name}' already exists")
@@ -252,10 +367,28 @@ def cmd_new(args):
 
     print(f"🍎 Creating new ApplePy project: {name}")
     print(f"   Swift target: {swift_target}")
-    print()
 
-    # Resolve ApplePy path
-    applepy_path = args.applepy_path or _find_applepy()
+    # Determine ApplePy dependency mode
+    use_local = args.local
+    if use_local:
+        applepy_path = args.applepy_path or _find_applepy()
+        if not applepy_path:
+            print(f"   ⚠ Could not auto-detect local ApplePy. Using default path.")
+            applepy_path = Path("../../ApplePy")
+        else:
+            applepy_path = Path(applepy_path).resolve()
+        # Compute relative path from swift/ to ApplePy
+        swift_dir = project_dir.resolve() / "swift"
+        try:
+            rel_applepy = os.path.relpath(applepy_path, swift_dir)
+        except ValueError:
+            rel_applepy = str(applepy_path)
+        print(f"   ApplePy: local ({rel_applepy})")
+    else:
+        applepy_url = args.applepy_url or APPLEPY_GITHUB_URL
+        applepy_version = args.applepy_version or APPLEPY_MIN_VERSION
+        print(f"   ApplePy: {applepy_url} (>= {applepy_version})")
+    print()
 
     # Create directory structure
     dirs = [
@@ -268,23 +401,21 @@ def cmd_new(args):
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
 
-    # Compute relative path from swift/ to ApplePy
-    swift_dir = project_dir / "swift"
-    if applepy_path:
-        try:
-            rel_applepy = os.path.relpath(applepy_path, swift_dir)
-        except ValueError:
-            rel_applepy = str(applepy_path)
-    else:
-        rel_applepy = "../../ApplePy"
-
-    # Generate files
+    # Build context for templates
     ctx = {
         "name": name,
         "swift_target": swift_target,
         "description": description,
-        "applepy_path": rel_applepy,
     }
+
+    # Choose Package.swift template
+    if use_local:
+        ctx["applepy_path"] = rel_applepy
+        pkg_swift_template = PACKAGE_SWIFT_TEMPLATE_LOCAL
+    else:
+        ctx["applepy_url"] = applepy_url
+        ctx["applepy_version"] = applepy_version
+        pkg_swift_template = PACKAGE_SWIFT_TEMPLATE_GITHUB
 
     files = {
         project_dir / "pyproject.toml": PYPROJECT_TEMPLATE,
@@ -293,7 +424,7 @@ def cmd_new(args):
         project_dir / ".gitignore": GITIGNORE_TEMPLATE,
         project_dir / name / "__init__.py": INIT_PY_TEMPLATE,
         project_dir / name / "examples" / "demo.py": DEMO_PY_TEMPLATE,
-        project_dir / "swift" / "Package.swift": PACKAGE_SWIFT_TEMPLATE,
+        project_dir / "swift" / "Package.swift": pkg_swift_template,
         project_dir / "swift" / "Sources" / swift_target / f"{swift_target}.swift": SWIFT_SOURCE_TEMPLATE,
     }
 
@@ -332,29 +463,12 @@ def cmd_develop(args):
         print(f"❌ No swift/ directory found. Are you in an ApplePy project?")
         sys.exit(1)
 
-    pkg_config_path = sysconfig.get_config_var("LIBPC") or ""
-    env = os.environ.copy()
-    env["PKG_CONFIG_PATH"] = pkg_config_path
-
-    # Build Swift
-    print(f"🔨 Building {swift_target}...")
-    try:
-        subprocess.check_call(["swift", "build"], cwd=swift_dir, env=env)
-    except subprocess.CalledProcessError:
-        print(f"❌ Swift build failed")
-        sys.exit(1)
-
-    # Copy dylib
-    dylib = swift_dir / ".build" / "debug" / f"lib{swift_target}.dylib"
-    if not dylib.exists():
-        print(f"❌ Expected {dylib} not found")
-        sys.exit(1)
+    dylib = _swift_build(swift_dir, swift_target)
 
     dest = project_dir / name / f"{name}.so"
     shutil.copy2(dylib, dest)
     print(f"📦 Installed {dylib.name} → {dest.relative_to(project_dir)}")
 
-    # pip install -e .
     print(f"📥 Installing {name} into current environment...")
     subprocess.check_call(
         [sys.executable, "-m", "pip", "install", "-e", ".", "-q"],
@@ -365,78 +479,72 @@ def cmd_develop(args):
 
 
 def cmd_build(args):
-    """Build a distributable wheel."""
+    """Build a distributable wheel with the native .so baked in."""
     project_dir = Path.cwd()
     config = _load_project(project_dir)
     name = config["name"]
     swift_target = config["swift_target"]
 
     swift_dir = project_dir / "swift"
-    pkg_config_path = sysconfig.get_config_var("LIBPC") or ""
-    env = os.environ.copy()
-    env["PKG_CONFIG_PATH"] = pkg_config_path
-
-    # Build Swift
-    print(f"🔨 Building {swift_target}...")
-    try:
-        subprocess.check_call(["swift", "build"], cwd=swift_dir, env=env)
-    except subprocess.CalledProcessError:
-        print(f"❌ Swift build failed")
-        sys.exit(1)
-
-    # Copy dylib
-    dylib = swift_dir / ".build" / "debug" / f"lib{swift_target}.dylib"
-    if not dylib.exists():
-        print(f"❌ Expected {dylib} not found")
-        sys.exit(1)
+    dylib = _swift_build(swift_dir, swift_target)
 
     dest = project_dir / name / f"{name}.so"
     shutil.copy2(dylib, dest)
     print(f"📦 Installed {dylib.name} → {dest.relative_to(project_dir)}")
 
-    # Build wheel
+    # Build wheel with correct platform tag
     dist_dir = project_dir / "dist"
     dist_dir.mkdir(exist_ok=True)
 
-    print(f"📦 Building wheel...")
+    plat_tag = _get_platform_tag()
+    print(f"📦 Building wheel (platform: {plat_tag})...")
     subprocess.check_call(
-        [sys.executable, "-m", "pip", "wheel", ".", "-w", "dist", "-q", "--no-deps"],
+        [
+            sys.executable, "-m", "pip", "wheel", ".",
+            "-w", "dist", "-q", "--no-deps",
+        ],
         cwd=project_dir,
     )
 
-    # List built wheels
-    wheels = list(dist_dir.glob("*.whl"))
-    if wheels:
-        for w in wheels:
-            size_kb = w.stat().st_size / 1024
-            print(f"✅ Built: {w.name} ({size_kb:.0f} KB)")
-    else:
-        print(f"❌ No wheel found in dist/")
-        sys.exit(1)
+    # Rename the wheel to use the correct platform tag
+    # setuptools generates py3-none-any, we need macosx_XX_X_arch
+    for whl in dist_dir.glob(f"{name}-*-py3-none-any.whl"):
+        correct_name = whl.name.replace("py3-none-any", f"py3-none-{plat_tag}")
+        correct_path = whl.parent / correct_name
+        whl.rename(correct_path)
+        size_kb = correct_path.stat().st_size / 1024
+        print(f"✅ Built: {correct_name} ({size_kb:.0f} KB)")
+        return
+
+    # If already has correct tag, just report
+    wheels = list(dist_dir.glob(f"{name}-*.whl"))
+    for w in sorted(wheels, key=lambda x: x.stat().st_mtime, reverse=True)[:1]:
+        size_kb = w.stat().st_size / 1024
+        print(f"✅ Built: {w.name} ({size_kb:.0f} KB)")
 
 
 def cmd_publish(args):
-    """Publish to PyPI."""
+    """Publish to PyPI (or TestPyPI with --test)."""
     project_dir = Path.cwd()
     config = _load_project(project_dir)
     name = config["name"]
 
     dist_dir = project_dir / "dist"
-    wheels = list(dist_dir.glob("*.whl"))
+    wheels = sorted(dist_dir.glob("*.whl"), key=lambda x: x.stat().st_mtime, reverse=True)
 
     if not wheels:
         print(f"❌ No wheels found in dist/. Run `applepy build` first.")
         sys.exit(1)
 
-    print(f"📤 Publishing {name} to PyPI...")
-    print(f"   Wheels: {', '.join(w.name for w in wheels)}")
+    # Show most recent wheel
+    latest = wheels[0]
+    print(f"📤 Publishing {name} to {'TestPyPI' if args.test else 'PyPI'}...")
+    print(f"   Wheel: {latest.name}")
 
     if args.test:
         repo_url = "https://test.pypi.org/legacy/"
-        print(f"   Repository: TestPyPI")
     else:
         repo_url = None
-        print(f"   Repository: PyPI")
 
     if not args.yes:
         confirm = input("\n   Proceed? [y/N] ")
@@ -447,11 +555,11 @@ def cmd_publish(args):
     cmd = [sys.executable, "-m", "twine", "upload"]
     if repo_url:
         cmd += ["--repository-url", repo_url]
-    cmd += [str(w) for w in wheels]
+    cmd.append(str(latest))
 
     try:
         subprocess.check_call(cmd)
-        print(f"✅ Published {name}!")
+        print(f"\n✅ Published {name}!")
         if args.test:
             print(f"   pip install -i https://test.pypi.org/simple/ {name}")
         else:
@@ -464,60 +572,6 @@ def cmd_publish(args):
         sys.exit(1)
 
 
-# ── Helpers ─────────────────────────────────────────────────
-
-def _find_applepy():
-    """Try to find the ApplePy package relative to the CLI tool."""
-    # Check common locations
-    cli_dir = Path(__file__).resolve().parent
-    candidates = [
-        cli_dir.parent.parent,                    # tools/applepy-cli -> ApplePy
-        cli_dir.parent.parent.parent / "ApplePy", # sibling in workspace
-        Path.cwd().parent / "ApplePy",
-    ]
-    for p in candidates:
-        if (p / "Package.swift").exists() and (p / "Sources").exists():
-            return p
-    return None
-
-
-def _load_project(project_dir: Path) -> dict:
-    """Load project configuration from pyproject.toml."""
-    pyproject = project_dir / "pyproject.toml"
-    if not pyproject.exists():
-        print(f"❌ No pyproject.toml found. Are you in a project directory?")
-        sys.exit(1)
-
-    # Simple TOML parser for name field (avoid dependency)
-    name = None
-    content = pyproject.read_text()
-    for line in content.splitlines():
-        line = line.strip()
-        if line.startswith("name") and "=" in line:
-            val = line.split("=", 1)[1].strip().strip('"').strip("'")
-            name = val
-            break
-
-    if not name:
-        print(f"❌ Could not find project name in pyproject.toml")
-        sys.exit(1)
-
-    # Derive swift target from name
-    swift_target = "".join(word.capitalize() for word in name.split("_")) or name.capitalize()
-
-    # Check if swift/Package.swift has a different target name
-    pkg_swift = project_dir / "swift" / "Package.swift"
-    if pkg_swift.exists():
-        pkg_content = pkg_swift.read_text()
-        # Look for name: "..." in the Package declaration
-        import re
-        match = re.search(r'Package\(\s*name:\s*"([^"]+)"', pkg_content)
-        if match:
-            swift_target = match.group(1)
-
-    return {"name": name, "swift_target": swift_target}
-
-
 # ── Main ────────────────────────────────────────────────────
 
 def main():
@@ -527,10 +581,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=dedent("""\
             Examples:
-              applepy new myproject          Create a new project
-              cd myproject && applepy develop Build and install
-              applepy build                  Build a wheel
-              applepy publish --test         Publish to TestPyPI
+              applepy new myproject                 Create project (GitHub ApplePy)
+              applepy new myproject --local         Create project (local ApplePy)
+              cd myproject && applepy develop       Build and install
+              applepy build                         Build a wheel
+              applepy publish --test                Publish to TestPyPI
         """),
     )
     parser.add_argument("--version", action="version", version=f"applepy {__version__}")
@@ -540,13 +595,28 @@ def main():
     p_new = sub.add_parser("new", help="Create a new ApplePy project")
     p_new.add_argument("name", help="Project name (e.g. myproject)")
     p_new.add_argument("-d", "--description", help="Project description")
-    p_new.add_argument("--applepy-path", help="Path to ApplePy package (auto-detected)")
+    p_new.add_argument(
+        "--local", action="store_true",
+        help="Use local ApplePy path instead of GitHub URL (for development)",
+    )
+    p_new.add_argument(
+        "--applepy-path",
+        help="Local path to ApplePy package (implies --local, auto-detected if not set)",
+    )
+    p_new.add_argument(
+        "--applepy-url",
+        help=f"GitHub URL for ApplePy (default: {APPLEPY_GITHUB_URL})",
+    )
+    p_new.add_argument(
+        "--applepy-version",
+        help=f"Minimum ApplePy version (default: {APPLEPY_MIN_VERSION})",
+    )
 
     # develop
-    p_dev = sub.add_parser("develop", help="Build Swift and install into current env")
+    sub.add_parser("develop", help="Build Swift and install into current env")
 
     # build
-    p_build = sub.add_parser("build", help="Build a distributable wheel")
+    sub.add_parser("build", help="Build a distributable wheel")
 
     # publish
     p_pub = sub.add_parser("publish", help="Publish to PyPI")
@@ -558,6 +628,10 @@ def main():
     if not args.command:
         parser.print_help()
         sys.exit(0)
+
+    # --applepy-path implies --local
+    if args.command == "new" and args.applepy_path:
+        args.local = True
 
     commands = {
         "new": cmd_new,
