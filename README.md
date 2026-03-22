@@ -2,19 +2,11 @@
 
 **Write Python extension modules in Swift.**
 
-ApplePy is a Swift framework that lets you write Python-importable modules using native Swift code, powered by Swift macros for zero-boilerplate interop.
+ApplePy lets you write Python-importable modules using native Swift code, powered by Swift macros for zero-boilerplate interop. Think [PyO3](https://pyo3.rs) for Swift.
 
-## Why ApplePy?
+> **Current version: 0.1.0-alpha** — Core functionality complete, working toward v1.0.
 
-|  | Python (C extension) | Cython | PyO3 (Rust) | **ApplePy (Swift)** |
-|--|---------------------|--------|-------------|---------------------|
-| Language | C | Cython/C | Rust | **Swift** |
-| Memory | Manual | Manual | Safe | **ARC (automatic)** |
-| Macros | N/A | N/A | `#[pyfunction]` | **`@PyFunction`** |
-| IDE Support | ⚠️ | ⚠️ | ✅ | **✅** |
-| Apple Platform | ✅ | ⚠️ | ⚠️ | **✅ Native** |
-
-## Quick Start
+## Quick Example
 
 ```swift
 import ApplePy
@@ -48,19 +40,43 @@ struct Counter {
 11
 ```
 
-## Features
+## Current Progress
 
-- ✅ **`@PyFunction`** — Expose Swift functions to Python
-- ✅ **`@PyClass`** — Expose Swift structs/classes as Python types
-- ✅ **`@PyMethod`** — Mark methods for Python exposure
-- ✅ **`#pymodule`** — Generate the module entry point
-- ✅ **Automatic type conversion** — Int, String, Bool, Float, Array, Dict, Optional
-- ✅ **ARC ↔ Refcount bridge** — Safe memory management across runtimes
-- ✅ **GIL management** — `PythonHandle.withGIL` and `allowThreads`
-- ✅ **Error bridging** — Swift `throws` → Python `RuntimeError`
-- ✅ **Wheel packaging** — Build `.whl` files for `pip install`
-- ✅ **SPM plugins** — Build and bundle commands
-- ✅ **Type stubs** — `.pyi` generation for IDE autocomplete
+### ✅ Complete
+| Feature | Status |
+|---------|--------|
+| `@PyFunction` — expose Swift functions | ✅ Working |
+| `@PyClass` — expose structs/classes as Python types | ✅ Working |
+| `@PyMethod` — mark methods for Python | ✅ Working |
+| `@PyEnum` — Swift enum → Python `IntEnum` | ✅ Working |
+| `#pymodule` — generate module entry point | ✅ Working |
+| Type conversions (Int, String, Bool, Float, Array, Dict, Optional) | ✅ Working |
+| ARC ↔ Python refcount bridge | ✅ Working |
+| GIL management (`withGIL`, `allowThreads`) | ✅ Working |
+| Error bridging (Swift `throws` → Python `RuntimeError`) | ✅ Working |
+| `@PythonActor` (global actor) | ✅ Working |
+| SPM build & bundle plugins | ✅ Working |
+| PEP 427 wheel packaging | ✅ Working |
+| Type stub generation (`.pyi`) | ✅ Working |
+| 15 unit tests passing | ✅ |
+
+### 🔧 v1.0 In Progress
+| Feature | Status |
+|---------|--------|
+| `@PyProperty` — getter/setter | Planned |
+| Static/class methods | Planned |
+| `~Copyable` PythonHandle (compile-time GIL safety) | Planned |
+| Variant enums (associated values → class hierarchy) | Planned |
+| Custom exception types | Planned |
+| Set/Tuple type conversions | Planned |
+
+### 🔮 Post-v1.0
+| Feature | Target |
+|---------|--------|
+| Async/Await ↔ Asyncio bridge | v1.1 |
+| Exception chaining / traceback | v1.1 |
+| Free-threaded Python 3.14t | TBD |
+| Ecosystem type bridges (Foundation.Date, Codable) | Future |
 
 ## Requirements
 
@@ -89,4 +105,4 @@ dependencies: [
 
 ## License
 
-MIT
+BSD-3-Clause — see [LICENSE](LICENSE).
