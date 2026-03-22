@@ -95,3 +95,96 @@ public func checkPythonError() throws {
         throw exc
     }
 }
+
+// MARK: - Custom Exception Types
+
+/// A custom Python exception type registered at module init time.
+/// Create these and register them in your module to use domain-specific exception types.
+///
+/// ```swift
+/// let MyError = PyExceptionType(name: "mylib.MyError", doc: "Custom error")
+///
+/// // In setPythonException:
+/// MyError.raise("something went wrong")
+/// ```
+public final class PyExceptionType: @unchecked Sendable {
+    /// The Python exception type object.
+    public private(set) var pyType: UnsafeMutablePointer<PyObject>?
+    /// The fully qualified name (e.g., "mylib.MyError").
+    public let qualifiedName: String
+
+    /// Create a custom exception type.
+    /// - Parameters:
+    ///   - name: Fully qualified name (e.g., "mylib.MyError")
+    ///   - doc: Optional docstring
+    ///   - base: Base exception type (defaults to RuntimeError)
+    public init(name: String, doc: String? = nil, base: UnsafeMutablePointer<PyObject>? = nil) {
+        self.qualifiedName = name
+        // PyErr_NewException creates a new exception class
+        let baseType = base ?? PyExc_RuntimeError
+        self.pyType = name.withCString { namePtr in
+            PyErr_NewException(namePtr, baseType, nil)
+        }
+    }
+
+    /// Register this exception type in a Python module.
+    /// Call this during module initialization.
+    @discardableResult
+    public func register(in module: UnsafeMutablePointer<PyObject>) -> Bool {
+        guard let pyType = pyType else { return false }
+        let shortName: String
+        if let dotIdx = qualifiedName.lastIndex(of: ".") {
+            shortName = String(qualifiedName[qualifiedName.index(after: dotIdx)...])
+        } else {
+            shortName = qualifiedName
+        }
+        ApplePy_INCREF(pyType)
+        return shortName.withCString { namePtr in
+            PyModule_AddObject(module, namePtr, pyType) == 0
+        }
+    }
+
+    /// Raise this exception with a message.
+    public func raise(_ message: String) {
+        guard let pyType = pyType else { return }
+        message.withCString {
+            PyErr_SetString(pyType, $0)
+        }
+    }
+}
+
+// MARK: - PyExceptionMapping Protocol
+
+/// Conform your Swift `Error` types to this protocol to control which
+/// Python exception type they map to.
+///
+/// ```swift
+/// enum MyError: Error, PyExceptionMapping {
+///     case invalidInput(String)
+///     case notFound(String)
+///
+///     var pythonExceptionType: PyExceptionType { MyErrors.invalidInput }
+///     var pythonMessage: String {
+///         switch self {
+///         case .invalidInput(let msg): return msg
+///         case .notFound(let msg): return msg
+///         }
+///     }
+/// }
+/// ```
+public protocol PyExceptionMapping: Error {
+    /// The Python exception type to raise for this error.
+    var pythonExceptionType: PyExceptionType { get }
+    /// The message to include with the exception.
+    var pythonMessage: String { get }
+}
+
+/// Set a Python exception from any Error, using PyExceptionMapping if available.
+@inlinable
+public func setPythonExceptionMapped(_ error: any Error) {
+    if let mapped = error as? PyExceptionMapping {
+        mapped.pythonExceptionType.raise(mapped.pythonMessage)
+    } else {
+        setPythonException(error)
+    }
+}
