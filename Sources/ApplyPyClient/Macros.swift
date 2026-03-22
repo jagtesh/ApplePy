@@ -9,3 +9,6 @@ public macro PyFunction() = #externalMacro(module: "ApplyPyMacros", type: "PyFun
 
 @attached(peer, names: arbitrary)
 public macro PyMethod(_ pythonName: String? = nil) = #externalMacro(module: "ApplyPyMacros", type: "PyMethodMacro")
+
+@freestanding(declaration, names: arbitrary)
+public macro pymodule(_ name: String, types: [Any.Type] = [], functions: [Any] = []) = #externalMacro(module: "ApplyPyMacros", type: "PyModuleMacro")

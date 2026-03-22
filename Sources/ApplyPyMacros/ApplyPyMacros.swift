@@ -12,5 +12,6 @@ struct ApplyPyMacroPlugin: CompilerPlugin {
         PyFunctionMacro.self,
         PyClassMacro.self,
         PyMethodMacro.self,
+        PyModuleMacro.self,
     ]
 }
