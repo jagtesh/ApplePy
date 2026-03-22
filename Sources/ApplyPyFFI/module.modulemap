@@ -1,0 +1,5 @@
+module ApplyPyFFI [system] {
+    header "include/applypy_shim.h"
+    link "python3.13"
+    export *
+}

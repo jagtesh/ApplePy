@@ -1,0 +1,22 @@
+# Build artifacts
+.build/
+.swiftpm/
+
+# Python extension outputs
+*.so
+*.dylib
+*.pyd
+dist/
+*.whl
+
+# macOS
+.DS_Store
+
+# Xcode
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+
+# IDE
+.idea/
+.vscode/
