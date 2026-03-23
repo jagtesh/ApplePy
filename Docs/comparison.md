@@ -71,7 +71,7 @@ ApplePy takes direct inspiration from [PyO3](https://pyo3.rs), adapting its patt
 ## Key Differences
 
 !!! info "Platform"
-    PyO3 is cross-platform (Linux, macOS, Windows). ApplePy targets macOS — its key advantage is direct access to Apple frameworks (CoreML, Metal, NaturalLanguage, Security, etc.).
+    PyO3 is cross-platform (Linux, macOS, Windows). ApplePy works anywhere Swift runs — on macOS, it additionally unlocks Apple frameworks (CoreML, Metal, NaturalLanguage, Security, etc.) that no other Python interop can access.
 
 !!! info "Language"
     Rust has zero-cost abstractions and no runtime. Swift has ARC and a rich standard library. Both have excellent type systems and compile-time safety.
