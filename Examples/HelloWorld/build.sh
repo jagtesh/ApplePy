@@ -48,6 +48,8 @@ swiftc \
 
 rm -rf "$TMPDIR"
 
+ln hello.cpython*.* -s hello.so
+
 echo "✅ Built: ${SO_NAME}"
 echo ""
-echo "Run: DYLD_LIBRARY_PATH='${PYTHON_LIBDIR}' PYTHONHOME='$(python3 -c "import sys; print(sys.prefix)")' python3 test_hello.py"
+echo "Run: python3 test_hello.py"
