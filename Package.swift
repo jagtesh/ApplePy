@@ -4,7 +4,6 @@ import CompilerPluginSupport
 
 let package = Package(
     name: "ApplePy",
-    platforms: [.macOS(.v13)],
     products: [
         .library(name: "ApplePy", targets: ["ApplePy"]),
         .library(name: "ApplePyClient", targets: ["ApplePyClient"]),
