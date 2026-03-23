@@ -15,5 +15,5 @@
 
 /* Tighten gap between emoji logo and site title */
 .md-header__topic .md-ellipsis {
-    margin-left: -0.35rem;
+    margin-left: -1.2rem;
 }
