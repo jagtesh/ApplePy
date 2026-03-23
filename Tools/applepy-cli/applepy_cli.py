@@ -21,7 +21,7 @@ import sysconfig
 from pathlib import Path
 from textwrap import dedent
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 # ApplePy Swift package — used when generating Package.swift for new projects
 APPLEPY_GITHUB_URL = "https://github.com/jagtesh/ApplePy.git"

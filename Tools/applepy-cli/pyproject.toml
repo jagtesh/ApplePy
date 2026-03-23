@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "applepy-cli"
-version = "0.1.2"
+version = "0.1.3"
 description = "Build tool for ApplePy — scaffold, build, and publish Swift-powered Python packages"
 readme = "README.md"
 license = {text = "BSD-3-Clause"}
