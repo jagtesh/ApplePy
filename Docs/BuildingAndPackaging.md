@@ -1,6 +1,33 @@
 # Building & Packaging
 
-## Building with SPM
+## Recommended: `applepy` CLI
+
+The easiest way to build and package ApplePy projects:
+
+```bash
+pip install applepy-cli    # or: uv pip install applepy-cli
+```
+
+| Command | What it does |
+|---------|-------------|
+| `applepy develop` | Build Swift + install into current env |
+| `applepy build` | Build a distributable wheel (`.whl`) |
+| `applepy publish` | Upload to PyPI |
+
+```bash
+# Build and install for development
+applepy develop
+
+# Build a wheel for distribution
+applepy build
+
+# Publish to PyPI (or TestPyPI with --test)
+applepy publish
+```
+
+---
+
+## Manual Build with SPM
 
 ApplePy uses Swift Package Manager. The `ApplePyFFI` system library target uses `pkg-config` to find Python headers and libraries automatically.
 
@@ -13,28 +40,17 @@ PKG_CONFIG_PATH=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("
 
 ### Building for Python import
 
-Python extensions need special naming. Use the example build scripts as reference:
+Python extensions need the `.dylib` renamed to `.so`:
 
 ```bash
-# Set up environment
-PYTHON_INCLUDE=$(python3 -c 'import sysconfig; print(sysconfig.get_path("include"))')
-PYTHON_LIBDIR=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')
-PYTHON_TAG=$(python3 -c 'import sys; print(f"cpython-{sys.version_info.major}{sys.version_info.minor}")')
-
-# Compile
-swiftc -emit-library -o "mylib.${PYTHON_TAG}-darwin.so" \
-    -I "$PYTHON_INCLUDE" \
-    -L "$PYTHON_LIBDIR" \
-    -Xlinker -undefined -Xlinker dynamic_lookup \
-    -parse-as-library \
-    mylib.swift
+cp .build/debug/libMyLib.dylib mylib/mylib.so
 ```
 
 ## SPM Plugins
 
 ### ApplePyBuild (Build Tool)
 
-Auto-runs during `swift build`. Currently handles Python detection via pkg-config.
+Auto-runs during `swift build`. Handles Python detection via pkg-config.
 
 ### ApplePyBundle (Command Plugin)
 
@@ -58,16 +74,6 @@ python3 Tools/applepy-pack.py \
 
 # Produces: dist/mylib-0.1.0-cp313-cp313-macosx_14_0_arm64.whl
 pip install dist/mylib-*.whl
-```
-
-### Wheel contents
-
-```
-mylib.cpython-313-darwin.so     # The extension module
-mylib-0.1.0.dist-info/METADATA # Package metadata
-mylib-0.1.0.dist-info/WHEEL    # Wheel format metadata
-mylib-0.1.0.dist-info/RECORD   # File hashes
-mylib-0.1.0.dist-info/top_level.txt
 ```
 
 ## Environment for mise-managed Python

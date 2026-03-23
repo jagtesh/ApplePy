@@ -1,104 +1,127 @@
 # Getting Started with ApplePy
 
-Build Python extension modules in Swift — write idiomatic Swift, import from Python.
+Create native Python extension modules in Swift — write idiomatic Swift, `pip install`, import from Python.
 
-## Quick Example
+## Quick Start (Recommended)
+
+The fastest way to get started is with the CLI:
+
+```bash
+# Install (pick one)
+pip install applepy-cli
+uv pip install applepy-cli
+```
+
+```bash
+# Create, build, and run
+applepy new myproject
+cd myproject
+applepy develop
+python myproject/examples/demo.py
+# → Hello, World! 🍎
+```
+
+That's it! The CLI scaffolds a complete project with Swift source, `pyproject.toml`, and a demo script.
+
+## What Gets Generated
+
+```
+myproject/
+├── pyproject.toml              # pip metadata
+├── setup.py                    # custom build_ext → swift build
+├── README.md
+├── myproject/
+│   ├── __init__.py             # loads compiled .so, re-exports functions
+│   └── examples/demo.py        # starter example
+└── swift/
+    ├── Package.swift           # SPM package, depends on ApplePy
+    └── Sources/MyProject/
+        └── MyProject.swift      # @PyFunction + @PyModule starter
+```
+
+## The Generated Swift Code
 
 ```swift
 import ApplePy
+@preconcurrency import ApplePyFFI
 
 @PyFunction
-func greet(name: String) -> String {
+func hello(name: String = "World") -> String {
     return "Hello, \(name)! 🍎"
 }
 
-@PyClass
-struct Counter {
-    var count: Int
-
-    init(count: Int = 0) {
-        self.count = count
-    }
-
-    @PyMethod
-    func increment() { count += 1 }
-
-    @PyMethod
-    func value() -> Int { count }
-}
-
-#pymodule("mylib", types: [Counter.self], functions: [greet])
+@PyModule("myproject", functions: [
+    hello,
+])
+func myproject() {}
 ```
 
 ```python
-import mylib
+>>> import myproject
+>>> myproject.hello("World")
+'Hello, World! 🍎'
+>>> myproject.hello("ApplePy")
+'Hello, ApplePy! 🍎'
+```
 
-print(mylib.greet("World"))
-# → Hello, World! 🍎
+## CLI Commands
 
-c = mylib.Counter(10)
-c.increment()
-print(c.value())  # → 11
+| Command | Description |
+|---------|-------------|
+| `applepy new <name>` | Scaffold a new project |
+| `applepy develop` | Build Swift + install into current environment |
+| `applepy build` | Build a distributable wheel (`.whl`) |
+| `applepy publish` | Publish to PyPI (`--test` for TestPyPI) |
+
+### `applepy new` Options
+
+```bash
+applepy new myproject                          # GitHub ApplePy dependency (default)
+applepy new myproject --local                  # local ApplePy checkout (for development)
+applepy new myproject --applepy-path ../ApplePy # explicit local path
+applepy new myproject -d "My description"      # set project description
 ```
 
 ## Prerequisites
 
 - **Swift 6.0+** (for macro support)
-- **Python 3.13+** (with development headers)
-- **macOS 13+** or Linux
+- **Python 3.10+** (with development headers)
+- **macOS** (Apple frameworks require macOS)
 
-## Setup
+## Manual Setup (Advanced)
 
-### 1. Create a new Swift package
-
-```bash
-mkdir mylib && cd mylib
-swift package init --type library --name mylib
-```
-
-### 2. Add ApplePy dependency
+If you prefer not to use the CLI, add ApplePy as a Swift package dependency:
 
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/example/ApplePy.git", from: "0.1.0"),
+    .package(url: "https://github.com/jagtesh/ApplePy.git", from: "1.0.0"),
 ],
 targets: [
-    .target(name: "mylib", dependencies: ["ApplePy"]),
+    .target(name: "mylib", dependencies: [
+        .product(name: "ApplePy", package: "ApplePy"),
+        .product(name: "ApplePyClient", package: "ApplePy"),
+    ]),
 ]
 ```
 
-### 3. Write your extension
-
-Create `Sources/mylib/mylib.swift` with your `@PyFunction`s, `@PyClass`es, and `#pymodule`.
-
-### 4. Build
-
+Build with:
 ```bash
-PKG_CONFIG_PATH=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')/pkgconfig \
+PKG_CONFIG_PATH=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("LIBPC"))') \
   swift build
 ```
 
-### 5. Bundle for Python
+## Real-World Examples
 
-Use the build scripts in `Examples/` as reference, or the `applepy-pack.py` tool:
-
-```bash
-python3 Tools/applepy-pack.py --name mylib --version 0.1.0 --so dist/mylib.so
-pip install dist/mylib-*.whl
-```
-
-## Environment Variables
-
-| Variable | Purpose |
-|----------|---------|
-| `PKG_CONFIG_PATH` | Points to Python's pkgconfig directory for build-time header/lib detection |
-| `DYLD_LIBRARY_PATH` | Points to Python's lib directory (macOS runtime) |
-| `PYTHONHOME` | Points to Python's prefix (needed for non-system Python, e.g., mise) |
+| Package | Framework | Install |
+|---------|-----------|---------|
+| [swiftkeychain](https://github.com/jagtesh/swiftkeychain) | macOS Security (Keychain) | `pip install swiftkeychain` |
+| [pynatural](https://github.com/jagtesh/pynatural) | NaturalLanguage (NLP) | `pip install pynatural` |
+| [pycoreml](https://github.com/jagtesh/pycoreml) | CoreML (ML inference) | `pip install pycoreml` |
 
 ## Next Steps
 
-- [Macros Reference](Macros.md) — `@PyFunction`, `@PyClass`, `@PyMethod`, `#pymodule`
+- [Macros Reference](Macros.md) — `@PyFunction`, `@PyClass`, `@PyMethod`, `@PyModule`
 - [Type Conversion](TypeConversion.md) — how Swift types map to Python types
 - [Memory Management](MemoryManagement.md) — ARC ↔ refcount bridge
 - [Building & Packaging](BuildingAndPackaging.md) — SPM plugins, wheel packaging

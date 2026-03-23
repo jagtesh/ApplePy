@@ -1,8 +1,14 @@
 # 🍎 ApplePy
 
-**Write Python extension modules in Swift.**
+**Create native Python extensions in Swift.**
 
-ApplePy lets you write Python-importable modules using native Swift code, powered by Swift macros for zero-boilerplate interop. Think [PyO3](https://pyo3.rs) for Swift.
+ApplePy lets you build `pip install`-able Python packages written entirely in Swift — with direct access to Apple frameworks like CoreML, NaturalLanguage, Security, and more. Powered by Swift macros for zero-boilerplate interop. Think [PyO3](https://pyo3.rs) for Swift.
+
+```bash
+pip install applepy-cli        # install the build tool
+applepy new myproject           # scaffold a project
+cd myproject && applepy develop # build & install
+```
 
 > **Version 1.0.0** — BSD-3-Clause
 
