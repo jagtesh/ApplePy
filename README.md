@@ -148,11 +148,11 @@ dependencies: [
 
 | Doc | Description |
 |-----|-------------|
-| [Getting Started](Docs/GettingStarted.md) | 5-minute quickstart |
-| [Macros Reference](Docs/Macros.md) | `@PyFunction`, `@PyClass`, `@PyMethod`, `#pymodule` |
-| [Type Conversion](Docs/TypeConversion.md) | Swift ↔ Python type mapping |
-| [Memory Management](Docs/MemoryManagement.md) | ARC ↔ refcount bridge |
-| [Building & Packaging](Docs/BuildingAndPackaging.md) | SPM, plugins, wheels |
+| [Getting Started](docs/getting-started.md) | 5-minute quickstart |
+| [Macros Reference](docs/guide/macros.md) | `@PyFunction`, `@PyClass`, `@PyMethod`, `#pymodule` |
+| [Type Conversion](docs/guide/type-conversion.md) | Swift ↔ Python type mapping |
+| [Memory Management](docs/guide/memory-management.md) | ARC ↔ refcount bridge |
+| [Building & Packaging](docs/guide/building.md) | SPM, plugins, wheels |
 
 ## Roadmap
 
