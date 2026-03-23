@@ -3,7 +3,7 @@ import SwiftSyntaxMacros
 import SwiftSyntaxMacrosTestSupport
 @testable import ApplePyMacros
 
-let testMacros: [String: Macro.Type] = [
+nonisolated(unsafe) let testMacros: [String: Macro.Type] = [
     "PyFunction": PyFunctionMacro.self,
     "PyClass": PyClassMacro.self,
     "PyMethod": PyMethodMacro.self,

@@ -3,7 +3,7 @@ import SwiftSyntaxMacros
 import SwiftSyntaxMacrosTestSupport
 @testable import ApplePyMacros
 
-let unionTestMacros: [String: Macro.Type] = [
+nonisolated(unsafe) let unionTestMacros: [String: Macro.Type] = [
     "PyUnion": PyUnionMacro.self,
 ]
 

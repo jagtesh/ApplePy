@@ -227,18 +227,7 @@ public struct PyEnumMacro: MemberMacro {
                 
                 // Create each variant subclass
                 \(raw: variants.map { v in
-                    let slotNames = v.params.map { "\"\($0.label)\"" }.joined(separator: ", ")
                     let initParams = v.params.map { "\($0.label)" }.joined(separator: ", ")
-                    let initBody = v.params.map { "self.\($0.label) = \($0.label)" }.joined(separator: "; ")
-                    let initCode: String
-                    if v.params.isEmpty {
-                        initCode = "pass"
-                    } else {
-                        initCode = """
-                        def __init__(self, \(initParams)):
-                                    \(v.params.map { "self.\($0.label) = \($0.label)" }.joined(separator: "\n                    "))
-                        """
-                    }
                     return """
                     do {
                         // Variant: \(v.capitalizedName)

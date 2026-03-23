@@ -16,7 +16,6 @@ public struct PyFunctionMacro: PeerMacro {
         }
 
         let funcName = funcDecl.name.text
-        let wrapperName = "_applepy_\(funcName)"
         let params = funcDecl.signature.parameterClause.parameters
         let returnsVoid = funcDecl.signature.returnClause == nil
         let isThrowing = funcDecl.signature.effectSpecifiers?.throwsClause != nil
