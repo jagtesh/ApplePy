@@ -30,7 +30,9 @@ theme:
     - content.tabs.link
   icon:
     repo: fontawesome/brands/github
-    logo: material/apple
+
+extra_css:
+  - assets/extra.css
 
 markdown_extensions:
   - admonition
