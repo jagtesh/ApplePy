@@ -3,6 +3,7 @@ site_description: Create native Python extensions in Swift
 site_url: https://jagtesh.github.io/ApplePy
 repo_url: https://github.com/jagtesh/ApplePy
 repo_name: jagtesh/ApplePy
+docs_dir: Docs
 
 theme:
   name: material
