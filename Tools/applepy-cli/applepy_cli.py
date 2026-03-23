@@ -21,7 +21,7 @@ import sysconfig
 from pathlib import Path
 from textwrap import dedent
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 # ApplePy Swift package — used when generating Package.swift for new projects
 APPLEPY_GITHUB_URL = "https://github.com/jagtesh/ApplePy.git"
@@ -44,7 +44,6 @@ license = {{text = "BSD-3-Clause"}}
 requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "Operating System :: MacOS",
     "Programming Language :: Python :: 3",
 ]
 
@@ -79,9 +78,6 @@ class SwiftBuildExt(build_ext):
     """Custom build_ext that calls `swift build` to compile the Swift extension."""
 
     def run(self):
-        if sys.platform != "darwin":
-            raise RuntimeError("{name} only supports macOS")
-
         src_dir = Path(__file__).parent
         swift_dir = src_dir / "swift"
         pkg_config_path = sysconfig.get_config_var("LIBPC") or ""
@@ -137,9 +133,6 @@ import importlib
 import os
 import sys
 
-if sys.platform != "darwin":
-    raise ImportError("{name} only supports macOS")
-
 
 def _load_native():
     """Load the compiled Swift extension module."""
@@ -176,7 +169,6 @@ import PackageDescription
 
 let package = Package(
     name: "{swift_target}",
-    platforms: [.macOS(.v14)],
     products: [
         .library(name: "{swift_target}", type: .dynamic, targets: ["{swift_target}"]),
     ],
