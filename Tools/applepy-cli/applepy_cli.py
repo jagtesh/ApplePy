@@ -50,17 +50,28 @@ classifiers = [
 
 [tool.setuptools.packages.find]
 include = ["{name}*"]
+
+[tool.setuptools.package-data]
+{name} = ["*.so"]
+'''
+
+MANIFEST_IN_TEMPLATE = '''\
+recursive-include swift *.swift
+include swift/Package.swift
+include swift/Package.resolved
+recursive-exclude swift/.build *
 '''
 
 SETUP_PY_TEMPLATE = '''\
 """Build — compiles Swift source into a Python-loadable .so"""
 import os
+import shutil
 import subprocess
 import sys
 import sysconfig
 from pathlib import Path
 
-from setuptools import setup
+from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
 
@@ -71,7 +82,8 @@ class SwiftBuildExt(build_ext):
         if sys.platform != "darwin":
             raise RuntimeError("{name} only supports macOS")
 
-        swift_dir = Path(__file__).parent / "swift"
+        src_dir = Path(__file__).parent
+        swift_dir = src_dir / "swift"
         pkg_config_path = sysconfig.get_config_var("LIBPC") or ""
 
         env = os.environ.copy()
@@ -84,21 +96,36 @@ class SwiftBuildExt(build_ext):
             env=env,
         )
 
-        build_dir = swift_dir / ".build" / "debug"
-        dylib = build_dir / "lib{swift_target}.dylib"
-        if not dylib.exists():
-            raise RuntimeError(f"Build succeeded but {{dylib}} not found")
+        # Find the built .dylib (check platform-specific and legacy paths)
+        lib_name = "lib{swift_target}.dylib"
+        candidates = [
+            swift_dir / ".build" / "debug" / lib_name,
+            swift_dir / ".build" / "arm64-apple-macosx" / "debug" / lib_name,
+        ]
+        dylib = next((p for p in candidates if p.exists()), None)
+        if dylib is None:
+            raise RuntimeError(f"Build succeeded but {{lib_name}} not found in .build/")
 
-        dest = Path(__file__).parent / "{name}" / "{name}.so"
-        print(f"📦 Installing {{dylib.name}} → {{dest}}")
-        import shutil
-        shutil.copy2(dylib, dest)
+        # Copy to _native/ subdirectory (avoids shadowing the package)
+        dest_dir = src_dir / "{name}" / "_native"
+        dest_dir.mkdir(exist_ok=True)
+        src_dest = dest_dir / "{name}.so"
+        print(f"📦 Installing {{dylib.name}} → {{src_dest}}")
+        shutil.copy2(dylib, src_dest)
 
-    def get_ext_filename(self, ext_name):
-        return ext_name + ".so"
+        # Also copy to build_lib (for regular pip install / wheel builds)
+        if self.build_lib:
+            build_dest = Path(self.build_lib) / "{name}" / "_native" / "{name}.so"
+            build_dest.parent.mkdir(parents=True, exist_ok=True)
+            print(f"📦 Installing {{dylib.name}} → {{build_dest}}")
+            shutil.copy2(dylib, build_dest)
 
 
-setup(cmdclass={{"build_ext": SwiftBuildExt}})
+# Dummy extension so setuptools invokes build_ext
+setup(
+    ext_modules=[Extension("{name}._swift", sources=[])],
+    cmdclass={{"build_ext": SwiftBuildExt}},
+)
 '''
 
 INIT_PY_TEMPLATE = '''\
@@ -117,7 +144,7 @@ if sys.platform != "darwin":
 def _load_native():
     """Load the compiled Swift extension module."""
     pkg_dir = os.path.dirname(os.path.abspath(__file__))
-    so_path = os.path.join(pkg_dir, "{name}.so")
+    so_path = os.path.join(pkg_dir, "_native", "{name}.so")
 
     if not os.path.exists(so_path):
         raise ImportError(
@@ -126,7 +153,7 @@ def _load_native():
             "  # or: pip install -e ."
         )
 
-    spec = importlib.util.spec_from_file_location("{name}", so_path)
+    spec = importlib.util.spec_from_file_location("{name}._native.{name}", so_path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -139,7 +166,7 @@ for _attr in dir(_native):
     if not _attr.startswith("_"):
         globals()[_attr] = getattr(_native, _attr)
 
-__version__ = "0.1.2"
+__version__ = "0.1.0"
 '''
 
 # Two Package.swift templates: one for GitHub (default), one for local dev
@@ -393,12 +420,16 @@ def cmd_new(args):
     dirs = [
         project_dir,
         project_dir / name,
+        project_dir / name / "_native",
         project_dir / name / "examples",
         project_dir / "swift",
         project_dir / "swift" / "Sources" / swift_target,
     ]
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
+
+    # Create empty __init__.py for _native subpackage
+    (project_dir / name / "_native" / "__init__.py").write_text("")
 
     # Build context for templates
     ctx = {
@@ -421,6 +452,7 @@ def cmd_new(args):
         project_dir / "setup.py": SETUP_PY_TEMPLATE,
         project_dir / "README.md": README_TEMPLATE,
         project_dir / ".gitignore": GITIGNORE_TEMPLATE,
+        project_dir / "MANIFEST.in": MANIFEST_IN_TEMPLATE,
         project_dir / name / "__init__.py": INIT_PY_TEMPLATE,
         project_dir / name / "examples" / "demo.py": DEMO_PY_TEMPLATE,
         project_dir / "swift" / "Package.swift": pkg_swift_template,
