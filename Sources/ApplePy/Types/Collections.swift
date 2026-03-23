@@ -19,7 +19,12 @@ extension Array: FromPyObject where Element: FromPyObject {
                 throw PythonConversionError.nullPointer
             }
             // PyList_GetItem returns a borrowed reference — no need to decref
-            result.append(try Element.fromPython(item, py: py))
+            do {
+                result.append(try Element.fromPython(item, py: py))
+            } catch {
+                throw PythonConversionError.collectionElement(
+                    collection: "list", index: Int(i), key: nil, innerError: error)
+            }
         }
         return result
     }
@@ -52,11 +57,27 @@ extension Dictionary: FromPyObject where Key: FromPyObject & Hashable, Value: Fr
         var pos: Py_ssize_t = 0
         var pyKey: UnsafeMutablePointer<PyObject>?
         var pyValue: UnsafeMutablePointer<PyObject>?
+        var index = 0
         while PyDict_Next(obj, &pos, &pyKey, &pyValue) != 0 {
             guard let k = pyKey, let v = pyValue else { continue }
             let key = try Key.fromPython(k, py: py)
-            let value = try Value.fromPython(v, py: py)
-            result[key] = value
+            do {
+                let value = try Value.fromPython(v, py: py)
+                result[key] = value
+            } catch {
+                // Try to get a string representation of the key for the error message
+                let keyStr: String?
+                if let strRepr = PyObject_Str(k), let cStr = PyUnicode_AsUTF8(strRepr) {
+                    keyStr = String(cString: cStr)
+                    ApplePy_DECREF(strRepr)
+                } else {
+                    PyErr_Clear()
+                    keyStr = nil
+                }
+                throw PythonConversionError.collectionElement(
+                    collection: "dict", index: index, key: keyStr, innerError: error)
+            }
+            index += 1
         }
         return result
     }

@@ -127,9 +127,33 @@ public actor PythonActor {
 // MARK: - Conversion Error
 
 /// Errors that can occur during Swift ↔ Python type conversion.
-public enum PythonConversionError: Error, @unchecked Sendable {
+public enum PythonConversionError: Error, @unchecked Sendable, CustomStringConvertible {
     case typeMismatch(expected: String, got: String)
     case overflow(value: String, targetType: String)
     case nullPointer
     case pythonError
+    /// A collection element failed conversion, with context about which element.
+    case collectionElement(collection: String, index: Int, key: String?, innerError: any Error)
+    /// No variant of a union type matched the Python object.
+    case unionMismatch(got: String, expected: [String])
+
+    public var description: String {
+        switch self {
+        case .typeMismatch(let expected, let got):
+            return "expected \(expected), got \(got)"
+        case .overflow(let value, let targetType):
+            return "value \(value) overflows \(targetType)"
+        case .nullPointer:
+            return "unexpected null pointer"
+        case .pythonError:
+            return "a Python error occurred"
+        case .collectionElement(let collection, let index, let key, let innerError):
+            if let key = key {
+                return "\(collection) value for key '\(key)': \(innerError)"
+            }
+            return "\(collection) element \(index): \(innerError)"
+        case .unionMismatch(let got, let expected):
+            return "'\(got)' cannot be converted to '\(expected.joined(separator: " | "))'"
+        }
+    }
 }

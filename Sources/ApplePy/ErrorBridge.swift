@@ -72,6 +72,23 @@ public func setPythonException(_ error: any Error) {
     }
 }
 
+/// Set a Python exception from an error in macro-generated code.
+/// Routes PythonConversionError to TypeError, other errors to RuntimeError
+/// or their mapped exception type.
+@inlinable
+public func setPythonConversionException(_ error: any Error) {
+    if error is PythonConversionError {
+        let message = String(describing: error)
+        message.withCString {
+            PyErr_SetString(PyExc_TypeError, $0)
+        }
+    } else if let mapped = error as? PyExceptionMapping {
+        mapped.pythonExceptionType.raise(mapped.pythonMessage)
+    } else {
+        setPythonException(error)
+    }
+}
+
 /// Set a Python TypeError.
 @inlinable
 public func setPythonTypeError(_ message: String) {

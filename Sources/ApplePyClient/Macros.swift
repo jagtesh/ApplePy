@@ -21,3 +21,6 @@ public macro PyProperty() = #externalMacro(module: "ApplePyMacros", type: "PyPro
 
 @attached(peer, names: prefixed(_applepy_))
 public macro PyStaticMethod() = #externalMacro(module: "ApplePyMacros", type: "PyStaticMethodMacro")
+
+@attached(member, names: arbitrary)
+public macro PyUnion() = #externalMacro(module: "ApplePyMacros", type: "PyUnionMacro")

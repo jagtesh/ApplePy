@@ -131,7 +131,7 @@ public struct PyFunctionMacro: PeerMacro {
                     \(unpackBlock)
                     \(returnConversion)
                 } catch {
-                    PyErr_SetString(PyExc_RuntimeError, "\\(error)")
+                    setPythonConversionException(error)
                     return nil
                 }
             """

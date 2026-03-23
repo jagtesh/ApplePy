@@ -309,7 +309,7 @@ public struct PyClassMacro: MemberMacro {
                 do {
                     \(param.name) = try \(param.type).fromPython(_pyArg\(i), py: _py)
                 } catch {
-                    PyErr_SetString(PyExc_TypeError, "\\(error)")
+                    setPythonConversionException(error)
                     return -1
                 }
             """)
