@@ -1,16 +1,3 @@
-Metadata-Version: 2.4
-Name: applepy-cli
-Version: 0.1.2
-Summary: Build tool for ApplePy — scaffold, build, and publish Swift-powered Python packages
-Author: Jagtesh Chadha
-License: BSD-3-Clause
-Classifier: Development Status :: 3 - Alpha
-Classifier: Operating System :: MacOS
-Classifier: Programming Language :: Python :: 3
-Classifier: Topic :: Software Development :: Build Tools
-Requires-Python: >=3.10
-Description-Content-Type: text/markdown
-
 # 🍎 applepy-cli
 
 **Build tool for [ApplePy](https://github.com/jagtesh/ApplePy)** — scaffold, build, and publish Swift-powered Python packages.

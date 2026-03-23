@@ -1,3 +1,4 @@
+README.md
 applepy_cli.py
 pyproject.toml
 applepy_cli.egg-info/PKG-INFO

@@ -106,16 +106,35 @@ enum Color: Int {
 | Build tool | `maturin` | SPM plugins + manual scripts |
 | Enums | Class-based | `IntEnum` + class hierarchy |
 
-## Requirements
+## Getting Started
 
-- Swift 6.0+ (macOS 13+)
-- Python 3.13+ (with development headers)
+The fastest way to start a new ApplePy project is with the CLI:
 
-## Installation
+```bash
+# Install the CLI (pick one)
+pip install applepy-cli
+uv pip install applepy-cli
+```
+
+Then create your project:
+
+```bash
+applepy new myproject
+cd myproject
+applepy develop
+python myproject/examples/demo.py
+# → Hello, World! 🍎
+```
+
+The CLI handles everything: project scaffolding, Swift compilation, and packaging. See [`applepy-cli` on PyPI](https://pypi.org/project/applepy-cli/) for all options.
+
+### Manual Setup (SPM)
+
+If you prefer to set things up manually, add ApplePy as a Swift package dependency:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/example/ApplePy.git", from: "1.0.0"),
+    .package(url: "https://github.com/jagtesh/ApplePy.git", from: "1.0.0"),
 ]
 ```
 

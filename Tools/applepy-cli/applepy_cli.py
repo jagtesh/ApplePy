@@ -21,7 +21,7 @@ import sysconfig
 from pathlib import Path
 from textwrap import dedent
 
-__version__ = "0.1.0"
+__version__ = "0.1.2"
 
 # ApplePy Swift package — used when generating Package.swift for new projects
 APPLEPY_GITHUB_URL = "https://github.com/jagtesh/ApplePy.git"
@@ -139,7 +139,7 @@ for _attr in dir(_native):
     if not _attr.startswith("_"):
         globals()[_attr] = getattr(_native, _attr)
 
-__version__ = "0.1.0"
+__version__ = "0.1.2"
 '''
 
 # Two Package.swift templates: one for GitHub (default), one for local dev
