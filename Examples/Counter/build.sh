@@ -45,4 +45,5 @@ rm -rf "$TMPDIR_MAP"
 
 echo "✅ Built: ${SO_NAME}"
 echo ""
-echo "Run: DYLD_LIBRARY_PATH='${PYTHON_LIBDIR}' PYTHONHOME='${PYTHON_HOME}' python3 test_counter.py"
+ln counter.cpy*.* -s counter.so
+echo "Run: python3 test_counter.py"
