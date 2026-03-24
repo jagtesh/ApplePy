@@ -5,7 +5,22 @@
 import SwiftSyntax
 import SwiftSyntaxMacros
 
-public struct PyUnionMacro: MemberMacro {
+public struct PyUnionMacro: MemberMacro, ExtensionMacro {
+    public static func expansion(
+        of node: AttributeSyntax,
+        attachedTo declaration: some DeclGroupSyntax,
+        providingExtensionsOf type: some TypeSyntaxProtocol,
+        conformingTo protocols: [TypeSyntax],
+        in context: some MacroExpansionContext
+    ) throws -> [ExtensionDeclSyntax] {
+        let fromPyExt: DeclSyntax = "extension \(type.trimmed): FromPyObject {}"
+        let intoPyExt: DeclSyntax = "extension \(type.trimmed): IntoPyObject {}"
+        return [
+            fromPyExt.cast(ExtensionDeclSyntax.self),
+            intoPyExt.cast(ExtensionDeclSyntax.self),
+        ]
+    }
+
     public static func expansion(
         of node: AttributeSyntax,
         providingMembersOf declaration: some DeclGroupSyntax,
