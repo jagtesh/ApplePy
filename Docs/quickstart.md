@@ -73,20 +73,17 @@ import ApplePy
 
 @PyFunction
 func hello(name: String = "World") -> String {
-    return "Hello, \(name)! 🍎"
+    "Hello, \(name)! 🍎"
 }
 
 // Add a new function:
 @PyFunction
 func add(a: Int, b: Int) -> Int {
-    return a + b
+    a + b
 }
 
 // Register it in the module:
-@PyModule("myproject", functions: [
-    hello,
-    add,  // ← add it here
-])
+@PyModule("myproject", functions: [hello, add]) // ← add it here
 func myproject() {}
 ```
 

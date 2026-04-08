@@ -40,7 +40,8 @@ enum Color: Int {
     case blue = 2
 }
 
-#pymodule("mylib", types: [Counter.self], functions: [greet])
+@PyModule("mylib", types: [Counter.self], functions: [greet])
+func mylib() {}
 ```
 
 ```python
@@ -68,7 +69,7 @@ enum Color: Int {
 | `@PyStaticMethod` | Mark static methods for Python |
 | `@PyProperty` | Expose stored properties with getters/setters |
 | `@PyEnum` | Swift enum → Python `IntEnum` or class hierarchy (with associated values) |
-| `#pymodule` | Generate `PyInit_` module entry point |
+| `@PyModule` | Generate `PyInit_` module entry point |
 
 ### Type System
 | Swift | Python | Direction |
@@ -149,7 +150,7 @@ dependencies: [
 | Doc | Description |
 |-----|-------------|
 | [Getting Started](docs/getting-started.md) | 5-minute quickstart |
-| [Macros Reference](docs/guide/macros.md) | `@PyFunction`, `@PyClass`, `@PyMethod`, `#pymodule` |
+| [Macros Reference](docs/guide/macros.md) | `@PyFunction`, `@PyClass`, `@PyMethod`, `@PyModule` |
 | [Type Conversion](docs/guide/type-conversion.md) | Swift ↔ Python type mapping |
 | [Memory Management](docs/guide/memory-management.md) | ARC ↔ refcount bridge |
 | [Building & Packaging](docs/guide/building.md) | SPM, plugins, wheels |

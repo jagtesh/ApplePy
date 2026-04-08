@@ -47,12 +47,10 @@ import ApplePy
 
 @PyFunction
 func hello(name: String = "World") -> String {
-    return "Hello, \(name)! 🍎"
+    "Hello, \(name)! 🍎"
 }
 
-@PyModule("myproject", functions: [
-    hello,
-])
+@PyModule("myproject", functions: [hello])
 func myproject() {}
 ```
 

@@ -226,14 +226,12 @@ import ApplePy
 
 @PyFunction
 func hello(name: String = "World") -> String {{
-    return "Hello, \\(name)! 🍎"
+    "Hello, \\(name)! 🍎"
 }}
 
 // MARK: - Module Entry Point
 
-@PyModule("{name}", functions: [
-    hello,
-])
+@PyModule("{name}", functions: [hello])
 func {name}() {{}}
 '''
 
