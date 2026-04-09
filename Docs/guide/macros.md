@@ -77,12 +77,13 @@ func repr() -> String { }
 - `__eq__`, `__hash__` (planned)
 - `__len__`, `__getitem__` (planned)
 
-## `#pymodule`
+## `@PyModule`
 
 Generates the `PyInit_<name>` entry point that CPython calls when you `import` the module.
 
 ```swift
-#pymodule("mylib", types: [Counter.self], functions: [greet])
+@PyModule("mylib", types: [Counter.self], functions: [greet])
+func mylib() {}
 ```
 
 **Parameters:**
