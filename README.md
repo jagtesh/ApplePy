@@ -149,11 +149,11 @@ dependencies: [
 
 | Doc | Description |
 |-----|-------------|
-| [Getting Started](docs/getting-started.md) | 5-minute quickstart |
-| [Macros Reference](docs/guide/macros.md) | `@PyFunction`, `@PyClass`, `@PyMethod`, `@PyModule` |
-| [Type Conversion](docs/guide/type-conversion.md) | Swift ↔ Python type mapping |
-| [Memory Management](docs/guide/memory-management.md) | ARC ↔ refcount bridge |
-| [Building & Packaging](docs/guide/building.md) | SPM, plugins, wheels |
+| [Getting Started](https://jagtesh.github.io/ApplePy/getting-started/) | 5-minute quickstart |
+| [Macros Reference](https://jagtesh.github.io/ApplePy/guide/macros/) | `@PyFunction`, `@PyClass`, `@PyMethod`, `@PyModule` |
+| [Type Conversion](https://jagtesh.github.io/ApplePy/guide/type-conversion/) | Swift ↔ Python type mapping |
+| [Memory Management](https://jagtesh.github.io/ApplePy/guide/memory-management/) | ARC ↔ refcount bridge |
+| [Building & Packaging](https://jagtesh.github.io/ApplePy/guide/building/) | SPM, plugins, wheels |
 
 ## Roadmap
 
