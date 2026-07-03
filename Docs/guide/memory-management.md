@@ -35,7 +35,12 @@ protocol PyBridged {
 PyBridge.store(myCounter, in: pyObject)
 
 // Method wrapper: access the Swift value
-let counter = PyBridge.load(Counter.self, from: pyObject)
+guard let counter = PyBridge.load(Counter.self, from: pyObject) else {
+    // Object was already deallocated or the pairing is otherwise corrupted —
+    // fail gracefully instead of crashing.
+    PyErr_SetString(PyExc_SystemError, "Counter: underlying Swift value is missing")
+    return nil
+}
 
 // tp_dealloc: release
 PyBridge.release(Counter.self, from: pyObject)

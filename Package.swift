@@ -55,7 +55,8 @@ let package = Package(
                 "ApplePy",
                 "ApplePyClient",
                 "ApplePyMacros",
-                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax"),
             ]
         ),
 

@@ -1,6 +1,6 @@
 import Testing
 import SwiftSyntaxMacros
-import SwiftSyntaxMacrosTestSupport
+import SwiftSyntaxMacrosGenericTestSupport
 @testable import ApplePyMacros
 
 nonisolated(unsafe) let unionTestMacros: [String: Macro.Type] = [
@@ -26,18 +26,30 @@ struct PyUnionMacroTests {
                 case int(Int)
 
                 public static func fromPython(_ obj: UnsafeMutablePointer<PyObject>, py: PythonHandle) throws -> StringOrInt {
-                    if let _v = try? String.fromPython(obj, py: py) { return .string(_v) }
-                    if let _v = try? Int.fromPython(obj, py: py) { return .int(_v) }
-                    let _typeName = String(cString: ApplePy_TYPE(obj).pointee.tp_name)
-                    throw PythonConversionError.unionMismatch(got: _typeName, expected: ["str", "int"])
-                }
+                        if let _v = try? String.fromPython(obj, py: py) {
+                            return .string(_v)
+                        }
+                        if let _v = try? Int.fromPython(obj, py: py) {
+                            return .int(_v)
+                        }
+                            let _typeName = String(cString: ApplePy_TYPE(obj).pointee.tp_name)
+                            throw PythonConversionError.unionMismatch(got: _typeName, expected: ["str", "int"])
+                    }
 
                 public func intoPython(py: PythonHandle) -> UnsafeMutablePointer<PyObject>? {
-                    switch self {
-                    case .string(let _v): return _v.intoPython(py: py)
-                    case .int(let _v): return _v.intoPython(py: py)
+                        switch self {
+                            case .string(let _v):
+                            return _v.intoPython(py: py)
+                            case .int(let _v):
+                            return _v.intoPython(py: py)
+                        }
                     }
-                }
+            }
+
+            extension StringOrInt: FromPyObject {
+            }
+
+            extension StringOrInt: IntoPyObject {
             }
             """,
             macros: unionTestMacros
@@ -60,18 +72,30 @@ struct PyUnionMacroTests {
                 case none
 
                 public static func fromPython(_ obj: UnsafeMutablePointer<PyObject>, py: PythonHandle) throws -> MaybeString {
-                    if ApplePy_IsNone(obj) != 0 { return .none }
-                    if let _v = try? String.fromPython(obj, py: py) { return .string(_v) }
-                    let _typeName = String(cString: ApplePy_TYPE(obj).pointee.tp_name)
-                    throw PythonConversionError.unionMismatch(got: _typeName, expected: ["str", "None"])
-                }
+                        if ApplePy_IsNone(obj) != 0 {
+                            return .none
+                        }
+                        if let _v = try? String.fromPython(obj, py: py) {
+                            return .string(_v)
+                        }
+                            let _typeName = String(cString: ApplePy_TYPE(obj).pointee.tp_name)
+                            throw PythonConversionError.unionMismatch(got: _typeName, expected: ["str", "None"])
+                    }
 
                 public func intoPython(py: PythonHandle) -> UnsafeMutablePointer<PyObject>? {
-                    switch self {
-                    case .string(let _v): return _v.intoPython(py: py)
-                    case .none: return ApplePy_None()
+                        switch self {
+                            case .string(let _v):
+                            return _v.intoPython(py: py)
+                            case .none:
+                            return ApplePy_None()
+                        }
                     }
-                }
+            }
+
+            extension MaybeString: FromPyObject {
+            }
+
+            extension MaybeString: IntoPyObject {
             }
             """,
             macros: unionTestMacros

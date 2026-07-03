@@ -56,9 +56,10 @@ public struct PyClassMacro: MemberMacro {
         // 3. Generate box helpers
         let boxType = isClass ? typeName : boxName
         decls.append("""
-            private static func _getSwiftValue(_ pyObj: UnsafeMutablePointer<PyObject>) -> \(raw: typeName) {
+            private static func _getSwiftValue(_ pyObj: UnsafeMutablePointer<PyObject>) -> \(raw: typeName)? {
                 let typed = UnsafeMutableRawPointer(pyObj).assumingMemoryBound(to: \(raw: pyObjName).self)
-                let box = Unmanaged<\(raw: boxType)>.fromOpaque(typed.pointee.swiftPtr!).takeUnretainedValue()
+                guard let ptr = typed.pointee.swiftPtr else { return nil }
+                let box = Unmanaged<\(raw: boxType)>.fromOpaque(ptr).takeUnretainedValue()
                 return \(raw: isClass ? "box" : "box.value")
             }
             """)
@@ -133,7 +134,10 @@ public struct PyClassMacro: MemberMacro {
                 @_cdecl("\(raw: tpReprName)")
                 public static func _tp_repr(_ self_: UnsafeMutablePointer<PyObject>?) -> UnsafeMutablePointer<PyObject>? {
                     guard let self_ = self_ else { return nil }
-                    let value = _getSwiftValue(self_)
+                    guard let value = _getSwiftValue(self_) else {
+                        PyErr_SetString(PyExc_SystemError, "\(raw: typeName): underlying Swift value is missing (object already deallocated?)")
+                        return nil
+                    }
                     let repr = value.__repr__()
                     return repr.withCString { PyUnicode_FromString($0) }
                 }

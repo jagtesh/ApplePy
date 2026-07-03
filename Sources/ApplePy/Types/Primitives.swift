@@ -13,7 +13,14 @@ extension Int: FromPyObject {
             let typeName = String(cString: ApplePy_TYPE(obj).pointee.tp_name)
             throw PythonConversionError.typeMismatch(expected: "int", got: typeName)
         }
-        return Int(value)
+        // `Int` is 64-bit on all currently-supported platforms, so this conversion
+        // is lossless there. On a hypothetical 32-bit platform `Int` would be
+        // narrower than `Int64`/`PyLong_AsLongLong`'s range, so we validate the
+        // conversion explicitly instead of silently truncating out-of-range values.
+        guard let intValue = Int(exactly: value) else {
+            throw PythonConversionError.overflow(value: String(value), targetType: "Int")
+        }
+        return intValue
     }
 }
 
@@ -46,6 +53,10 @@ extension Double: IntoPyObject {
 // MARK: - Float
 
 extension Float: FromPyObject {
+    /// - Note: Python floats are IEEE-754 doubles; narrowing to `Float` may lose
+    ///   precision or round `Double.greatestFiniteMagnitude`-scale values to
+    ///   `.infinity`. This mirrors `Float(Double)`'s standard rounding behavior
+    ///   and is not treated as a conversion error.
     public static func fromPython(_ obj: UnsafeMutablePointer<PyObject>, py: PythonHandle) throws -> Float {
         let d = try Double.fromPython(obj, py: py)
         return Float(d)
