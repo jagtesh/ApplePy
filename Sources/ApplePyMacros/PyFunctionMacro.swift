@@ -15,6 +15,30 @@ public struct PyFunctionMacro: PeerMacro {
             throw MacroError("@PyFunction can only be applied to functions")
         }
 
+        // Reject constructs that would otherwise silently generate broken or
+        // meaningless bridging code:
+        //  - `async` functions: the generated @_cdecl wrapper is a synchronous
+        //    C entry point and cannot `await` a call into Swift concurrency.
+        //  - generic functions: the wrapper's parameter/return types must be
+        //    concrete `FromPyObject`/`IntoPyObject` conformers known at
+        //    expansion time; a generic parameter has no such conformance.
+        //  - `inout` parameters: the wrapper only ever passes a converted
+        //    *copy* of the Python argument, so writes to an `inout` parameter
+        //    would be silently discarded instead of visible to the caller.
+        if funcDecl.signature.effectSpecifiers?.asyncSpecifier != nil {
+            throw MacroError("@PyFunction does not support 'async' functions")
+        }
+        if let genericClause = funcDecl.genericParameterClause, !genericClause.parameters.isEmpty {
+            throw MacroError("@PyFunction does not support generic functions")
+        }
+        for param in funcDecl.signature.parameterClause.parameters {
+            if param.type.is(AttributedTypeSyntax.self),
+               let attributedType = param.type.as(AttributedTypeSyntax.self),
+               attributedType.specifiers.contains(where: { $0.trimmedDescription == "inout" }) {
+                throw MacroError("@PyFunction does not support 'inout' parameters (parameter '\(param.firstName.text)')")
+            }
+        }
+
         let funcName = funcDecl.name.text
         let params = funcDecl.signature.parameterClause.parameters
         let returnsVoid = funcDecl.signature.returnClause == nil

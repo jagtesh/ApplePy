@@ -149,4 +149,63 @@ struct TypeConversionTests {
             }
         }
     }
+
+    @Test("Set<Int> roundtrip")
+    func setRoundtrip() throws {
+        try withPython { py in
+            let original: Set<Int> = [1, 2, 3, 4, 5]
+            let pyObj = original.intoPython(py: py)!
+            let restored = try Set<Int>.fromPython(pyObj, py: py)
+            ApplePy_DECREF(pyObj)
+            #expect(restored == original)
+        }
+    }
+
+    @Test("Set<Int> type mismatch throws error")
+    func setTypeMismatchThrows() throws {
+        try withPython { py in
+            let pyList = [1, 2, 3].intoPython(py: py)!
+            defer { ApplePy_DECREF(pyList) }
+            #expect(throws: PythonConversionError.self) {
+                _ = try Set<Int>.fromPython(pyList, py: py)
+            }
+        }
+    }
+
+    @Test("PyTuple2 roundtrip")
+    func tuple2Roundtrip() throws {
+        try withPython { py in
+            let original = PyTuple2(42, "hello")
+            let pyObj = original.intoPython(py: py)!
+            let restored = try PyTuple2<Int, String>.fromPython(pyObj, py: py)
+            ApplePy_DECREF(pyObj)
+            #expect(restored._0 == 42)
+            #expect(restored._1 == "hello")
+        }
+    }
+
+    @Test("PyTuple2 wrong arity throws error")
+    func tuple2WrongArityThrows() throws {
+        try withPython { py in
+            let original = [1, 2, 3].intoPython(py: py)!
+            defer { ApplePy_DECREF(original) }
+            // A list is not a tuple, so this should throw a type mismatch.
+            #expect(throws: PythonConversionError.self) {
+                _ = try PyTuple2<Int, Int>.fromPython(original, py: py)
+            }
+        }
+    }
+
+    @Test("PyTuple3 roundtrip")
+    func tuple3Roundtrip() throws {
+        try withPython { py in
+            let original = PyTuple3(1, "two", 3.0)
+            let pyObj = original.intoPython(py: py)!
+            let restored = try PyTuple3<Int, String, Double>.fromPython(pyObj, py: py)
+            ApplePy_DECREF(pyObj)
+            #expect(restored._0 == 1)
+            #expect(restored._1 == "two")
+            #expect(restored._2 == 3.0)
+        }
+    }
 }

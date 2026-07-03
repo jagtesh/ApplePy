@@ -136,4 +136,67 @@ struct PyFunctionMacroTests {
             macros: testMacros
         )
     }
+
+    @Test("Async function produces error")
+    func asyncFunction() {
+        assertMacroExpansion(
+            """
+            @PyFunction
+            func fetch() async -> String {
+                return "data"
+            }
+            """,
+            expandedSource: """
+            func fetch() async -> String {
+                return "data"
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(message: "@PyFunction does not support 'async' functions", line: 1, column: 1)
+            ],
+            macros: testMacros
+        )
+    }
+
+    @Test("Generic function produces error")
+    func genericFunction() {
+        assertMacroExpansion(
+            """
+            @PyFunction
+            func identity<T>(value: T) -> T {
+                return value
+            }
+            """,
+            expandedSource: """
+            func identity<T>(value: T) -> T {
+                return value
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(message: "@PyFunction does not support generic functions", line: 1, column: 1)
+            ],
+            macros: testMacros
+        )
+    }
+
+    @Test("inout parameter produces error")
+    func inoutParameter() {
+        assertMacroExpansion(
+            """
+            @PyFunction
+            func increment(value: inout Int) {
+                value += 1
+            }
+            """,
+            expandedSource: """
+            func increment(value: inout Int) {
+                value += 1
+            }
+            """,
+            diagnostics: [
+                DiagnosticSpec(message: "@PyFunction does not support 'inout' parameters (parameter 'value')", line: 1, column: 1)
+            ],
+            macros: testMacros
+        )
+    }
 }

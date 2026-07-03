@@ -12,12 +12,26 @@ public struct PyClassMacro: MemberMacro {
     ) throws -> [DeclSyntax] {
         // Get the type name
         let typeName: String
+        let genericParameterClause: GenericParameterClauseSyntax?
         if let structDecl = declaration.as(StructDeclSyntax.self) {
             typeName = structDecl.name.text
+            genericParameterClause = structDecl.genericParameterClause
         } else if let classDecl = declaration.as(ClassDeclSyntax.self) {
             typeName = classDecl.name.text
+            genericParameterClause = classDecl.genericParameterClause
         } else {
             throw MacroError("@PyClass can only be applied to structs or classes")
+        }
+
+        // Reject generic types: the generated PyObject storage struct,
+        // tp_new/tp_init/tp_dealloc, and PyType_Spec all assume a single
+        // concrete, monomorphic Swift type. A generic type has no single
+        // `MemoryLayout<...>.size` or C-callable @_cdecl entry point, so
+        // allowing this to proceed would silently generate code that either
+        // fails to compile with a confusing error deep in the macro
+        // expansion, or (for unconstrained generics) simply doesn't type-check.
+        if let genericParameterClause, !genericParameterClause.parameters.isEmpty {
+            throw MacroError("@PyClass does not support generic types")
         }
 
         let isClass = declaration.is(ClassDeclSyntax.self)
