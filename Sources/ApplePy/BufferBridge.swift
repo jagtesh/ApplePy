@@ -34,9 +34,17 @@ public enum BufferBridge {
 
     /// Extract bytes from a Python `bytes` or `bytearray` object (copies data).
     public static func bytesFromPython(_ obj: UnsafeMutablePointer<PyObject>) -> [UInt8]? {
-        // Try bytes first
-        if let ptr = PyBytes_AsString(obj) {
+        // Type-check before extracting so we don't call PyBytes_Size /
+        // PyBytes_AsString on an object that isn't actually a `bytes`
+        // instance (e.g. a `bytearray`, which needs the PyByteArray_* API).
+        if ApplePy_BytesCheck(obj) != 0, let ptr = PyBytes_AsString(obj) {
             let len = PyBytes_Size(obj)
+            guard len >= 0 else { return nil }
+            return Array(UnsafeBufferPointer(start: ptr.withMemoryRebound(to: UInt8.self, capacity: len) { $0 }, count: len))
+        }
+        if ApplePy_ByteArrayCheck(obj) != 0, let ptr = PyByteArray_AsString(obj) {
+            let len = PyByteArray_Size(obj)
+            guard len >= 0 else { return nil }
             return Array(UnsafeBufferPointer(start: ptr.withMemoryRebound(to: UInt8.self, capacity: len) { $0 }, count: len))
         }
         return nil

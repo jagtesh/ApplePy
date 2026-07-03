@@ -30,6 +30,14 @@ public protocol PyBridged {
 // MARK: - Default struct box
 
 /// A generic box for value types. Stores a mutable copy on the heap.
+///
+/// - Warning: `@unchecked Sendable` here is **not** a general safety
+///   guarantee — `T` is not required to be `Sendable`, and `value` is a
+///   `var` that can be freely mutated. This type is safe to share across
+///   threads *only* because ApplePy's convention is that all access to a
+///   `PyObjectBox` happens while the Python GIL is held (see `PythonHandle`),
+///   which serializes access the same way a lock would. Do not read or write
+///   `value` from Swift code that isn't holding the GIL.
 public final class PyObjectBox<T>: @unchecked Sendable {
     public var value: T
 

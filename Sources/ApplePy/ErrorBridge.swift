@@ -124,6 +124,14 @@ public func checkPythonError() throws {
 /// // In setPythonException:
 /// MyError.raise("something went wrong")
 /// ```
+///
+/// - Warning: `@unchecked Sendable` is justified here only under ApplePy's
+///   standing convention that every `PyObject*` (including `pyType`) is only
+///   ever read or mutated while the Python GIL is held — the GIL provides the
+///   mutual exclusion that `Sendable` would otherwise require the compiler to
+///   verify. Do not call `raise(_:)`, `register(in:)`, or access `pyType`
+///   without holding the GIL (e.g. from a Swift `Task` that has not
+///   round-tripped through Python).
 public final class PyExceptionType: @unchecked Sendable {
     /// The Python exception type object.
     public private(set) var pyType: UnsafeMutablePointer<PyObject>?

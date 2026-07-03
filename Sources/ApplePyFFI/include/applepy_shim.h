@@ -107,6 +107,11 @@ static inline int ApplePy_BytesCheck(PyObject *o) {
     return PyBytes_Check(o);
 }
 
+/// Check if a PyObject is a bytearray.
+static inline int ApplePy_ByteArrayCheck(PyObject *o) {
+    return PyByteArray_Check(o);
+}
+
 /// Check if a PyObject is a Unicode string.
 static inline int ApplePy_UnicodeCheck(PyObject *o) {
     return PyUnicode_Check(o);

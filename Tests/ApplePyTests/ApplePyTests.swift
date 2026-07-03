@@ -208,4 +208,40 @@ struct TypeConversionTests {
             #expect(restored._2 == 3.0)
         }
     }
+
+    @Test("bytes roundtrip")
+    func bytesRoundtrip() throws {
+        try withPython { _ in
+            let original: [UInt8] = [0x00, 0x01, 0xFF, 0x42, 0x7F]
+            let pyObj = BufferBridge.bytesToPython(original)!
+            defer { ApplePy_DECREF(pyObj) }
+            let restored = BufferBridge.bytesFromPython(pyObj)
+            #expect(restored == original)
+        }
+    }
+
+    @Test("bytearray roundtrip")
+    func bytearrayRoundtrip() throws {
+        try withPython { _ in
+            let original: [UInt8] = [0x10, 0x20, 0x30]
+            let pyBytes = BufferBridge.bytesToPython(original)!
+            defer { ApplePy_DECREF(pyBytes) }
+            guard let pyByteArray = PyByteArray_FromObject(pyBytes) else {
+                Issue.record("Failed to create bytearray")
+                return
+            }
+            defer { ApplePy_DECREF(pyByteArray) }
+            let restored = BufferBridge.bytesFromPython(pyByteArray)
+            #expect(restored == original)
+        }
+    }
+
+    @Test("bytesFromPython returns nil for non-bytes type")
+    func bytesFromPythonTypeMismatch() throws {
+        try withPython { py in
+            let pyInt = 42.intoPython(py: py)!
+            defer { ApplePy_DECREF(pyInt) }
+            #expect(BufferBridge.bytesFromPython(pyInt) == nil)
+        }
+    }
 }
