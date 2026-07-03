@@ -31,10 +31,10 @@ public struct PyPropertyMacro: PeerMacro {
 
         // Reject computed properties (`get`/`set`, or `get`-only). @PyClass's
         // codegen assumes a stored property backed by real storage in the
-        // Swift value; applying it to a computed property would silently
-        // generate a getter/setter pair that reads/writes a property with no
-        // backing storage, producing confusing runtime behavior instead of a
-        // clear compile-time error.
+        // Swift value; applying @PyProperty to a computed property would
+        // silently generate a getter/setter pair that reads/writes a
+        // property with no backing storage, producing confusing runtime
+        // behavior instead of a clear compile-time error.
         for binding in varDecl.bindings {
             if let accessorBlock = binding.accessorBlock {
                 switch accessorBlock.accessors {

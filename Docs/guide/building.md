@@ -29,7 +29,7 @@ applepy publish
 
 ## Manual Build with SPM
 
-ApplePy uses Swift Package Manager. The `ApplePyFFI` system library target uses `pkg-config` (module `python3-embed`) to find Python headers and libraries automatically. The `-embed` variant is required (rather than plain `python3`) because ApplePy embeds the interpreter in a host process and needs to link against `libpython`, unlike a normal CPython extension module.
+ApplePy uses Swift Package Manager. The `ApplePyFFI` system library target uses `pkg-config` (module `python3-embed`) to find Python headers and libraries automatically. The `-embed` variant is required rather than plain `python3` because ApplePy embeds the interpreter in a host process. A normal CPython extension module resolves Python symbols dynamically from the host interpreter at import time and must *not* link `libpython` directly, but an embedding host process needs to link against `libpython` explicitly — which is exactly what the `-embed` pkg-config module provides.
 
 ### Standard build
 

@@ -81,7 +81,8 @@ struct ApplePyBundlePlugin: CommandPlugin {
     }
 
     /// Locate a usable Python 3 interpreter on PATH, trying the generic
-    /// `python3` first and falling back to specific minor versions.
+    /// `python3` first and falling back to specific minor versions in
+    /// descending order (`python3.13`, `python3.12`, ..., `python3.9`).
     /// This avoids hardcoding a single Python version that may not be
     /// installed on the host machine.
     private func detectPythonExecutable() throws -> String {

@@ -170,10 +170,11 @@ public struct PyEnumMacro: MemberMacro {
         }
 
         // Validate that generated identifiers are syntactically valid Python
-        // identifiers and not reserved keywords. The generated `__init__` is
-        // built via raw string interpolation (Py_CompileString), so an
-        // invalid label here would otherwise produce syntactically broken
-        // Python source that only fails at runtime with a confusing error.
+        // identifiers and not reserved keywords. The generated Python source
+        // (class names and the `__init__` method) is built via raw string
+        // interpolation (Py_CompileString), so an invalid label here would
+        // otherwise produce syntactically broken Python source that only
+        // fails at runtime with a confusing error.
         for variant in variants {
             try validatePythonIdentifier(variant.capitalizedName, context: "case '\(variant.name)'")
             for param in variant.params {
