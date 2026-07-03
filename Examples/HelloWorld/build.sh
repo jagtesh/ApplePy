@@ -12,11 +12,13 @@ PYTHON_LIBDIR=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("LI
 PYTHON_TAG=$(python3 -c 'import sys; print(f"cpython-{sys.version_info.major}{sys.version_info.minor}")')
 APPLEPY_FFI="$(cd ../.. && pwd)/Sources/ApplePyFFI"
 
-# Determine platform suffix
+# Determine platform suffix and the linker flag needed so the extension can
+# resolve CPython symbols from the host interpreter at import time instead of
+# linking libpython directly (the standard approach for CPython extensions).
 case "$(uname -s)" in
-    Darwin) PLATFORM="darwin" ;; 
-    Linux)  PLATFORM="linux-$(uname -m)" ;;
-    *)      PLATFORM="unknown" ;;
+    Darwin) PLATFORM="darwin"; UNDEFINED_SYMBOL_FLAGS="-Xlinker -undefined -Xlinker dynamic_lookup" ;;
+    Linux)  PLATFORM="linux-$(uname -m)"; UNDEFINED_SYMBOL_FLAGS="" ;;
+    *)      PLATFORM="unknown"; UNDEFINED_SYMBOL_FLAGS="" ;;
 esac
 
 SO_NAME="hello.${PYTHON_TAG}-${PLATFORM}.so"
@@ -29,9 +31,8 @@ echo "  ApplePyFFI:     ${APPLEPY_FFI}"
 # Create a temporary module map for CPython
 TMPDIR=$(mktemp -d)
 cat > "$TMPDIR/module.modulemap" <<EOF
-module CPythonShim [system] {
+module ApplePyFFI [system] {
     header "${APPLEPY_FFI}/include/applepy_shim.h"
-    link "python3.13"
     export *
 }
 EOF
@@ -42,7 +43,7 @@ swiftc \
     -I "$PYTHON_INCLUDE" \
     -I "$TMPDIR" \
     -L "$PYTHON_LIBDIR" \
-    -Xlinker -undefined -Xlinker dynamic_lookup \
+    $UNDEFINED_SYMBOL_FLAGS \
     -parse-as-library \
     hello.swift
 

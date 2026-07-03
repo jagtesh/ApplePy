@@ -6,7 +6,7 @@
 // so we parse arguments manually using PyTuple_GetItem + type-specific extractors.
 // String literals for PyMethodDef/PyModuleDef must have stable (non-temporary) pointers.
 
-import CPythonShim
+import ApplePyFFI
 
 // ─── greet(name: str) -> str ────────────────────────────────────────────────
 
