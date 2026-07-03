@@ -82,11 +82,16 @@ struct ApplePyBundlePlugin: CommandPlugin {
 
     /// Locate a usable Python 3 interpreter on PATH, trying the generic
     /// `python3` first and falling back to specific minor versions in
-    /// descending order (`python3.13`, `python3.12`, ..., `python3.9`).
+    /// descending order (`python3.15`, `python3.14`, ..., `python3.9`).
     /// This avoids hardcoding a single Python version that may not be
-    /// installed on the host machine.
+    /// installed on the host machine, and includes upcoming/pre-release
+    /// versions so newer interpreters are picked up without code changes.
     private func detectPythonExecutable() throws -> String {
-        let candidates = ["python3", "python3.13", "python3.12", "python3.11", "python3.10", "python3.9"]
+        let candidates = [
+            "python3",
+            "python3.15", "python3.14", "python3.13",
+            "python3.12", "python3.11", "python3.10", "python3.9",
+        ]
         for candidate in candidates {
             if !(try runShell("which", candidate)).isEmpty {
                 return candidate
@@ -126,7 +131,7 @@ enum PluginError: Error, CustomStringConvertible {
     var description: String {
         switch self {
         case .pythonNotFound:
-            return "Could not find a Python 3 interpreter on PATH (tried python3, python3.13, python3.12, python3.11, python3.10, python3.9)"
+            return "Could not find a Python 3 interpreter on PATH (tried python3, python3.15, python3.14, python3.13, python3.12, python3.11, python3.10, python3.9)"
         }
     }
 }
