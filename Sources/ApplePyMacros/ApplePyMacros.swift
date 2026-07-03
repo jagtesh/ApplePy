@@ -1,5 +1,5 @@
 // ApplePy – Macro Plugin Entry Point
-// Thin wrapper: registers macros from ApplePyMacroCore with the compiler.
+// Registers all macro implementations (defined in this target) with the compiler.
 
 import SwiftCompilerPlugin
 import SwiftSyntax

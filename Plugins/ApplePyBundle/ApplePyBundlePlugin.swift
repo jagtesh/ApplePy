@@ -33,7 +33,8 @@ struct ApplePyBundlePlugin: CommandPlugin {
         let modName = moduleName ?? targetName.lowercased()
 
         // Detect Python tag and platform
-        let pythonTag = try runShell("python3", "-c", "import sys; print(f'cpython-{sys.version_info.major}{sys.version_info.minor}')")
+        let pythonExecutable = try detectPythonExecutable()
+        let pythonTag = try runShell(pythonExecutable, "-c", "import sys; print(f'cpython-{sys.version_info.major}{sys.version_info.minor}')")
         let platform = try detectPlatform()
 
         let soName = "\(modName).\(pythonTag)-\(platform).so"
@@ -76,7 +77,21 @@ struct ApplePyBundlePlugin: CommandPlugin {
         try FileManager.default.copyItem(at: sourceFile, to: destFile)
 
         Diagnostics.remark("✅ Bundled: \(destFile.path)")
-        Diagnostics.remark("Import with: python3 -c 'import \(modName)'")
+        Diagnostics.remark("Import with: \(pythonExecutable) -c 'import \(modName)'")
+    }
+
+    /// Locate a usable Python 3 interpreter on PATH, trying the generic
+    /// `python3` first and falling back to specific minor versions.
+    /// This avoids hardcoding a single Python version that may not be
+    /// installed on the host machine.
+    private func detectPythonExecutable() throws -> String {
+        let candidates = ["python3", "python3.13", "python3.12", "python3.11", "python3.10", "python3.9"]
+        for candidate in candidates {
+            if !(try runShell("which", candidate)).isEmpty {
+                return candidate
+            }
+        }
+        throw PluginError.pythonNotFound
     }
 
     private func runShell(_ args: String...) throws -> String {
@@ -101,5 +116,16 @@ struct ApplePyBundlePlugin: CommandPlugin {
         #else
         return "unknown"
         #endif
+    }
+}
+
+enum PluginError: Error, CustomStringConvertible {
+    case pythonNotFound
+
+    var description: String {
+        switch self {
+        case .pythonNotFound:
+            return "Could not find a Python 3 interpreter on PATH (tried python3, python3.13, python3.12, python3.11, python3.10, python3.9)"
+        }
     }
 }

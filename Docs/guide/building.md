@@ -29,13 +29,21 @@ applepy publish
 
 ## Manual Build with SPM
 
-ApplePy uses Swift Package Manager. The `ApplePyFFI` system library target uses `pkg-config` to find Python headers and libraries automatically.
+ApplePy uses Swift Package Manager. The `ApplePyFFI` system library target uses `pkg-config` (module `python3-embed`) to find Python headers and libraries automatically. The `-embed` variant is required (rather than plain `python3`) because ApplePy embeds the interpreter in a host process and needs to link against `libpython`, unlike a normal CPython extension module.
 
 ### Standard build
 
 ```bash
 PKG_CONFIG_PATH=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("LIBPC"))') \
   swift build
+```
+
+If your Python installation doesn't expose an unversioned `python3-embed.pc` alias (common on some Homebrew/pyenv installs, which only ship a versioned `python-3.1x-embed.pc`), create a symlink in a directory on `PKG_CONFIG_PATH`, e.g.:
+
+```bash
+ln -s "$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("LIBPC"))')/python-3.$(python3 -c 'import sys; print(sys.version_info.minor)')-embed.pc" \
+      /tmp/pkgconfig/python3-embed.pc
+export PKG_CONFIG_PATH=/tmp/pkgconfig:$PKG_CONFIG_PATH
 ```
 
 ### Building for Python import
