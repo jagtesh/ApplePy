@@ -12,6 +12,10 @@ extension Array: FromPyObject where Element: FromPyObject {
             throw PythonConversionError.typeMismatch(expected: "list", got: typeName)
         }
         let count = PyList_Size(obj)
+        guard count >= 0 else {
+            PyErr_Clear()
+            throw PythonConversionError.pythonError
+        }
         var result: [Element] = []
         result.reserveCapacity(Int(count))
         for i in 0..<count {
@@ -38,8 +42,12 @@ extension Array: IntoPyObject where Element: IntoPyObject {
                 ApplePy_DECREF(list)
                 return nil
             }
-            // PyList_SetItem steals a reference, so we don't need to decref pyItem
-            PyList_SetItem(list, Py_ssize_t(i), pyItem)
+            // PyList_SetItem steals the reference to pyItem regardless of
+            // success or failure, so we must not decref it ourselves.
+            guard PyList_SetItem(list, Py_ssize_t(i), pyItem) == 0 else {
+                ApplePy_DECREF(list)
+                return nil
+            }
         }
         return list
     }
@@ -79,6 +87,12 @@ extension Dictionary: FromPyObject where Key: FromPyObject & Hashable, Value: Fr
             }
             index += 1
         }
+        // PyDict_Next returns 0 both when iteration is complete and when an
+        // exception occurred (e.g. the dict was mutated during iteration).
+        // Without this check a real Python exception would be silently dropped.
+        if PyErr_Occurred() != nil {
+            throw PythonConversionError.pythonError
+        }
         return result
     }
 }
@@ -87,15 +101,23 @@ extension Dictionary: IntoPyObject where Key: IntoPyObject, Value: IntoPyObject 
     public func intoPython(py: PythonHandle) -> UnsafeMutablePointer<PyObject>? {
         guard let dict = PyDict_New() else { return nil }
         for (key, value) in self {
-            guard let pyKey = key.intoPython(py: py),
-                  let pyValue = value.intoPython(py: py) else {
+            guard let pyKey = key.intoPython(py: py) else {
+                ApplePy_DECREF(dict)
+                return nil
+            }
+            guard let pyValue = value.intoPython(py: py) else {
+                ApplePy_DECREF(pyKey)
                 ApplePy_DECREF(dict)
                 return nil
             }
             // PyDict_SetItem does NOT steal references — it increfs both key and value
-            PyDict_SetItem(dict, pyKey, pyValue)
+            let rc = PyDict_SetItem(dict, pyKey, pyValue)
             ApplePy_DECREF(pyKey)
             ApplePy_DECREF(pyValue)
+            guard rc == 0 else {
+                ApplePy_DECREF(dict)
+                return nil
+            }
         }
         return dict
     }
@@ -132,6 +154,10 @@ extension Set: FromPyObject where Element: FromPyObject & Hashable {
             throw PythonConversionError.typeMismatch(expected: "set", got: typeName)
         }
         let count = PySet_Size(obj)
+        guard count >= 0 else {
+            PyErr_Clear()
+            throw PythonConversionError.pythonError
+        }
         var result = Set<Element>(minimumCapacity: Int(count))
         // Iterate via PyObject_GetIter
         guard let iter = PyObject_GetIter(obj) else {
@@ -141,6 +167,12 @@ extension Set: FromPyObject where Element: FromPyObject & Hashable {
         while let item = PyIter_Next(iter) {
             defer { ApplePy_DECREF(item) }
             result.insert(try Element.fromPython(item, py: py))
+        }
+        // PyIter_Next returns NULL both when iteration is complete and when an
+        // exception occurred. Without this check a real Python exception raised
+        // mid-iteration would be silently discarded.
+        if PyErr_Occurred() != nil {
+            throw PythonConversionError.pythonError
         }
         return result
     }
@@ -155,8 +187,12 @@ extension Set: IntoPyObject where Element: IntoPyObject {
                 return nil
             }
             // PySet_Add does NOT steal a reference
-            PySet_Add(pySet, pyItem)
+            let rc = PySet_Add(pySet, pyItem)
             ApplePy_DECREF(pyItem)
+            guard rc == 0 else {
+                ApplePy_DECREF(pySet)
+                return nil
+            }
         }
         return pySet
     }
@@ -180,8 +216,11 @@ extension PyTuple2: FromPyObject {
         guard PyTuple_Size(obj) == 2 else {
             throw PythonConversionError.typeMismatch(expected: "tuple of 2", got: "tuple of \(PyTuple_Size(obj))")
         }
-        let a = try A.fromPython(PyTuple_GetItem(obj, 0)!, py: py)
-        let b = try B.fromPython(PyTuple_GetItem(obj, 1)!, py: py)
+        guard let item0 = PyTuple_GetItem(obj, 0), let item1 = PyTuple_GetItem(obj, 1) else {
+            throw PythonConversionError.nullPointer
+        }
+        let a = try A.fromPython(item0, py: py)
+        let b = try B.fromPython(item1, py: py)
         return PyTuple2(a, b)
     }
 }
@@ -189,12 +228,20 @@ extension PyTuple2: FromPyObject {
 extension PyTuple2: IntoPyObject {
     public func intoPython(py: PythonHandle) -> UnsafeMutablePointer<PyObject>? {
         guard let tuple = PyTuple_New(2) else { return nil }
-        guard let pa = _0.intoPython(py: py), let pb = _1.intoPython(py: py) else {
+        guard let pa = _0.intoPython(py: py) else {
             ApplePy_DECREF(tuple)
             return nil
         }
-        PyTuple_SetItem(tuple, 0, pa)  // steals reference
-        PyTuple_SetItem(tuple, 1, pb)
+        guard let pb = _1.intoPython(py: py) else {
+            ApplePy_DECREF(pa)
+            ApplePy_DECREF(tuple)
+            return nil
+        }
+        // PyTuple_SetItem steals the reference regardless of success/failure.
+        guard PyTuple_SetItem(tuple, 0, pa) == 0, PyTuple_SetItem(tuple, 1, pb) == 0 else {
+            ApplePy_DECREF(tuple)
+            return nil
+        }
         return tuple
     }
 }
@@ -218,9 +265,14 @@ extension PyTuple3: FromPyObject {
         guard PyTuple_Size(obj) == 3 else {
             throw PythonConversionError.typeMismatch(expected: "tuple of 3", got: "tuple of \(PyTuple_Size(obj))")
         }
-        let a = try A.fromPython(PyTuple_GetItem(obj, 0)!, py: py)
-        let b = try B.fromPython(PyTuple_GetItem(obj, 1)!, py: py)
-        let c = try C.fromPython(PyTuple_GetItem(obj, 2)!, py: py)
+        guard let item0 = PyTuple_GetItem(obj, 0),
+              let item1 = PyTuple_GetItem(obj, 1),
+              let item2 = PyTuple_GetItem(obj, 2) else {
+            throw PythonConversionError.nullPointer
+        }
+        let a = try A.fromPython(item0, py: py)
+        let b = try B.fromPython(item1, py: py)
+        let c = try C.fromPython(item2, py: py)
         return PyTuple3(a, b, c)
     }
 }
@@ -228,13 +280,27 @@ extension PyTuple3: FromPyObject {
 extension PyTuple3: IntoPyObject {
     public func intoPython(py: PythonHandle) -> UnsafeMutablePointer<PyObject>? {
         guard let tuple = PyTuple_New(3) else { return nil }
-        guard let pa = _0.intoPython(py: py), let pb = _1.intoPython(py: py), let pc = _2.intoPython(py: py) else {
+        guard let pa = _0.intoPython(py: py) else {
             ApplePy_DECREF(tuple)
             return nil
         }
-        PyTuple_SetItem(tuple, 0, pa)
-        PyTuple_SetItem(tuple, 1, pb)
-        PyTuple_SetItem(tuple, 2, pc)
+        guard let pb = _1.intoPython(py: py) else {
+            ApplePy_DECREF(pa)
+            ApplePy_DECREF(tuple)
+            return nil
+        }
+        guard let pc = _2.intoPython(py: py) else {
+            ApplePy_DECREF(pa)
+            ApplePy_DECREF(pb)
+            ApplePy_DECREF(tuple)
+            return nil
+        }
+        guard PyTuple_SetItem(tuple, 0, pa) == 0,
+              PyTuple_SetItem(tuple, 1, pb) == 0,
+              PyTuple_SetItem(tuple, 2, pc) == 0 else {
+            ApplePy_DECREF(tuple)
+            return nil
+        }
         return tuple
     }
 }

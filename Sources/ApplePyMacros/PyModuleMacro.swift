@@ -63,10 +63,11 @@ public struct PyModuleMacro: PeerMacro {
         var heapMethodAssignments: [String] = []
         for funcName in functionNames {
             let wrapperName = "_applepy_\(funcName)"
+            let flagsName = "_applepy_flags_\(funcName)"
             heapMethodAssignments.append("""
                 do {
                     let n: UnsafePointer<CChar> = "\(funcName)".withCString { UnsafePointer(strdup($0)!) }
-                    methodsPtr[idx] = PyMethodDef(ml_name: n, ml_meth: \(wrapperName), ml_flags: METH_VARARGS, ml_doc: nil)
+                    methodsPtr[idx] = PyMethodDef(ml_name: n, ml_meth: \(wrapperName), ml_flags: \(flagsName), ml_doc: nil)
                     idx += 1
                 }
             """)

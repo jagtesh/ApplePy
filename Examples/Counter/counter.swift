@@ -9,7 +9,7 @@
 //   c.increment()
 //   print(c.value())  # 12
 
-import CPythonShim
+import ApplePyFFI
 
 // ─── The Swift type we're wrapping ──────────────────────────────────────────
 

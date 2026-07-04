@@ -30,6 +30,14 @@ public protocol PyBridged {
 // MARK: - Default struct box
 
 /// A generic box for value types. Stores a mutable copy on the heap.
+///
+/// - Warning: `@unchecked Sendable` here is **not** a general safety
+///   guarantee — `T` is not required to be `Sendable`, and `value` is a
+///   `var` that can be freely mutated. This type is safe to share across
+///   threads *only* because ApplePy's convention is that all access to a
+///   `PyObjectBox` happens while the Python GIL is held (see `PythonHandle`),
+///   which serializes access the same way a lock would. Do not read or write
+///   `value` from Swift code that isn't holding the GIL.
 public final class PyObjectBox<T>: @unchecked Sendable {
     public var value: T
 
@@ -62,18 +70,28 @@ public enum PyBridge {
 
     /// Load a Swift value from a Python object without changing the retain count.
     /// Call this from method wrappers to access `self`.
+    ///
+    /// Returns `nil` if the object has no live Swift value stored (e.g. it was
+    /// already released via `tp_dealloc`, or the pairing was otherwise
+    /// corrupted). Callers should treat `nil` as an error condition — set a
+    /// Python exception and return an error sentinel — rather than crash the
+    /// whole interpreter.
     @inlinable
-    public static func load<T: PyBridged>(_ type: T.Type, from pyObj: UnsafeMutablePointer<PyObject>) -> T {
+    public static func load<T: PyBridged>(_ type: T.Type, from pyObj: UnsafeMutablePointer<PyObject>) -> T? {
         let typed = UnsafeMutableRawPointer(pyObj).assumingMemoryBound(to: SwiftPyObject.self)
-        let box = Unmanaged<T.Box>.fromOpaque(typed.pointee.swiftPtr!).takeUnretainedValue()
+        guard let ptr = typed.pointee.swiftPtr else { return nil }
+        let box = Unmanaged<T.Box>.fromOpaque(ptr).takeUnretainedValue()
         return T.unbox(box)
     }
 
     /// Load the mutable box from a Python object (for structs that need mutation).
+    ///
+    /// Returns `nil` under the same conditions as `load(_:from:)`.
     @inlinable
-    public static func loadBox<T: PyBridged>(_ type: T.Type, from pyObj: UnsafeMutablePointer<PyObject>) -> T.Box {
+    public static func loadBox<T: PyBridged>(_ type: T.Type, from pyObj: UnsafeMutablePointer<PyObject>) -> T.Box? {
         let typed = UnsafeMutableRawPointer(pyObj).assumingMemoryBound(to: SwiftPyObject.self)
-        return Unmanaged<T.Box>.fromOpaque(typed.pointee.swiftPtr!).takeUnretainedValue()
+        guard let ptr = typed.pointee.swiftPtr else { return nil }
+        return Unmanaged<T.Box>.fromOpaque(ptr).takeUnretainedValue()
     }
 
     /// Release the Swift value stored in a Python object.

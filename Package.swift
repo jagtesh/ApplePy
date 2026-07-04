@@ -10,13 +10,13 @@ let package = Package(
         .library(name: "ApplePyClient", targets: ["ApplePyClient"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", from: "600.0.0"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", "600.0.0"..<"700.0.0"),
     ],
     targets: [
         // ── CPython FFI Bindings ─────────────────────────────────────
         .systemLibrary(
             name: "ApplePyFFI",
-            pkgConfig: "python3",
+            pkgConfig: "python3-embed",
             providers: [
                 .brew(["python3"]),
                 .apt(["python3-dev"]),
@@ -55,7 +55,8 @@ let package = Package(
                 "ApplePy",
                 "ApplePyClient",
                 "ApplePyMacros",
-                .product(name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax"),
             ]
         ),
 

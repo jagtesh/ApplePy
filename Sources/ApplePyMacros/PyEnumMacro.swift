@@ -100,11 +100,14 @@ public struct PyEnumMacro: MemberMacro {
                 guard let intEnumClass = PyObject_GetAttrString(enumMod, "IntEnum") else { return false }
                 defer { ApplePy_DECREF(intEnumClass) }
                 
-                let memberList = PyList_New(\(raw: cases.count))!
+                guard let memberList = PyList_New(\(raw: cases.count)) else { return false }
                 \(raw: cases.enumerated().map { i, c in
                     """
                     do {
-                        let pair = PyTuple_New(2)!
+                        guard let pair = PyTuple_New(2) else {
+                            ApplePy_DECREF(memberList)
+                            return false
+                        }
                         PyTuple_SetItem(pair, 0, PyUnicode_FromString("\(c.name)"))
                         PyTuple_SetItem(pair, 1, PyLong_FromLongLong(Int64(\(c.rawValue))))
                         PyList_SetItem(memberList, \(i), pair)
@@ -112,7 +115,10 @@ public struct PyEnumMacro: MemberMacro {
                     """
                 }.joined(separator: "\n        "))
                 
-                let args = PyTuple_New(2)!
+                guard let args = PyTuple_New(2) else {
+                    ApplePy_DECREF(memberList)
+                    return false
+                }
                 PyTuple_SetItem(args, 0, PyUnicode_FromString("\(raw: enumName)"))
                 PyTuple_SetItem(args, 1, memberList)
                 
@@ -163,6 +169,19 @@ public struct PyEnumMacro: MemberMacro {
             }
         }
 
+        // Validate that generated identifiers are syntactically valid Python
+        // identifiers and not reserved keywords. The generated Python source
+        // (class names and the `__init__` method) is built via raw string
+        // interpolation (Py_CompileString), so an invalid label here would
+        // otherwise produce syntactically broken Python source that only
+        // fails at runtime with a confusing error.
+        for variant in variants {
+            try validatePythonIdentifier(variant.capitalizedName, context: "case '\(variant.name)'")
+            for param in variant.params {
+                try validatePythonIdentifier(param.label, context: "parameter '\(param.label)' of case '\(variant.name)'")
+            }
+        }
+
         // Map Swift type names to Python type format codes
         func pyTypeString(_ swiftType: String) -> String {
             switch swiftType {
@@ -201,14 +220,22 @@ public struct PyEnumMacro: MemberMacro {
                 ApplePy_DECREF(emptyTuple)
                 
                 // type("EnumName", (object,), {"__slots__": ()})
-                let baseBases = PyTuple_New(1)!
+                guard let baseBases = PyTuple_New(1) else {
+                    ApplePy_DECREF(baseDict)
+                    return false
+                }
                 guard let objectType = PyObject_GetAttrString(builtins, "object") else {
+                    ApplePy_DECREF(baseBases)
                     ApplePy_DECREF(baseDict)
                     return false
                 }
                 PyTuple_SetItem(baseBases, 0, objectType)
                 
-                let baseArgs = PyTuple_New(3)!
+                guard let baseArgs = PyTuple_New(3) else {
+                    ApplePy_DECREF(baseBases)
+                    ApplePy_DECREF(baseDict)
+                    return false
+                }
                 PyTuple_SetItem(baseArgs, 0, PyUnicode_FromString("\(raw: enumName)"))
                 PyTuple_SetItem(baseArgs, 1, baseBases)
                 PyTuple_SetItem(baseArgs, 2, baseDict)
@@ -221,6 +248,8 @@ public struct PyEnumMacro: MemberMacro {
                 
                 // Add base class to module
                 if PyModule_AddObject(module, "\(raw: enumName)", baseClass) < 0 {
+                    // PyModule_AddObject only steals the reference on success —
+                    // on failure we still own baseClass and must release it.
                     ApplePy_DECREF(baseClass)
                     return false
                 }
@@ -273,9 +302,14 @@ public struct PyEnumMacro: MemberMacro {
                         PyTuple_SetItem(variantArgs, 2, variantDict)
                         
                         if let variantClass = PyObject_CallObject(typeFunc, variantArgs) {
-                            PyModule_AddObject(module, "\(v.capitalizedName)", variantClass)
-                            // Also add as attribute on base: Shape.Circle = Circle
-                            PyObject_SetAttrString(baseClass, "\(v.capitalizedName)", variantClass)
+                            if PyModule_AddObject(module, "\(v.capitalizedName)", variantClass) < 0 {
+                                // PyModule_AddObject only steals the reference on success —
+                                // on failure we still own variantClass and must release it.
+                                ApplePy_DECREF(variantClass)
+                            } else {
+                                // Also add as attribute on base: Shape.Circle = Circle
+                                PyObject_SetAttrString(baseClass, "\(v.capitalizedName)", variantClass)
+                            }
                         }
                         ApplePy_DECREF(variantArgs)
                     }
@@ -303,5 +337,36 @@ public struct PyEnumMacro: MemberMacro {
             """)
 
         return decls
+    }
+}
+
+// MARK: - Python identifier validation
+
+/// Python reserved keywords (Python 3 `keyword.kwlist` plus soft keywords),
+/// which cannot be used as identifiers such as parameter names or class names.
+private let pythonKeywords: Set<String> = [
+    "False", "None", "True", "and", "as", "assert", "async", "await",
+    "break", "class", "continue", "def", "del", "elif", "else", "except",
+    "finally", "for", "from", "global", "if", "import", "in", "is",
+    "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try",
+    "while", "with", "yield",
+]
+
+/// Validates that `name` is a syntactically valid Python identifier and not
+/// a reserved keyword. Throws a `MacroError` (surfaced as a compiler
+/// diagnostic at the `@PyEnum` attribute site) otherwise, so generation of
+/// syntactically-invalid Python source is rejected at macro-expansion time
+/// instead of silently producing broken code.
+private func validatePythonIdentifier(_ name: String, context: String) throws {
+    guard let first = name.first else {
+        throw MacroError("@PyEnum: \(context) has an empty name, which is not a valid Python identifier")
+    }
+    let isValidStart = first == "_" || first.isLetter
+    let isValidRest = name.dropFirst().allSatisfy { $0 == "_" || $0.isLetter || $0.isNumber }
+    guard isValidStart && isValidRest else {
+        throw MacroError("@PyEnum: \(context) has name '\(name)' which is not a valid Python identifier")
+    }
+    guard !pythonKeywords.contains(name) else {
+        throw MacroError("@PyEnum: \(context) has name '\(name)' which is a reserved Python keyword")
     }
 }

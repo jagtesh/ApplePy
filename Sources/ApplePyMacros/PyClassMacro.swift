@@ -12,12 +12,26 @@ public struct PyClassMacro: MemberMacro {
     ) throws -> [DeclSyntax] {
         // Get the type name
         let typeName: String
+        let genericParameterClause: GenericParameterClauseSyntax?
         if let structDecl = declaration.as(StructDeclSyntax.self) {
             typeName = structDecl.name.text
+            genericParameterClause = structDecl.genericParameterClause
         } else if let classDecl = declaration.as(ClassDeclSyntax.self) {
             typeName = classDecl.name.text
+            genericParameterClause = classDecl.genericParameterClause
         } else {
             throw MacroError("@PyClass can only be applied to structs or classes")
+        }
+
+        // Reject generic types: the generated PyObject storage struct,
+        // tp_new/tp_init/tp_dealloc, and PyType_Spec all assume a single
+        // concrete, monomorphic Swift type. A generic type has no single
+        // `MemoryLayout<...>.size` or C-callable @_cdecl entry point, so
+        // allowing this to proceed would silently generate code that either
+        // fails to compile with a confusing error deep in the macro
+        // expansion, or (for unconstrained generics) simply doesn't type-check.
+        if let genericParameterClause, !genericParameterClause.parameters.isEmpty {
+            throw MacroError("@PyClass does not support generic types")
         }
 
         let isClass = declaration.is(ClassDeclSyntax.self)
@@ -56,9 +70,10 @@ public struct PyClassMacro: MemberMacro {
         // 3. Generate box helpers
         let boxType = isClass ? typeName : boxName
         decls.append("""
-            private static func _getSwiftValue(_ pyObj: UnsafeMutablePointer<PyObject>) -> \(raw: typeName) {
+            private static func _getSwiftValue(_ pyObj: UnsafeMutablePointer<PyObject>) -> \(raw: typeName)? {
                 let typed = UnsafeMutableRawPointer(pyObj).assumingMemoryBound(to: \(raw: pyObjName).self)
-                let box = Unmanaged<\(raw: boxType)>.fromOpaque(typed.pointee.swiftPtr!).takeUnretainedValue()
+                guard let ptr = typed.pointee.swiftPtr else { return nil }
+                let box = Unmanaged<\(raw: boxType)>.fromOpaque(ptr).takeUnretainedValue()
                 return \(raw: isClass ? "box" : "box.value")
             }
             """)
@@ -133,7 +148,10 @@ public struct PyClassMacro: MemberMacro {
                 @_cdecl("\(raw: tpReprName)")
                 public static func _tp_repr(_ self_: UnsafeMutablePointer<PyObject>?) -> UnsafeMutablePointer<PyObject>? {
                     guard let self_ = self_ else { return nil }
-                    let value = _getSwiftValue(self_)
+                    guard let value = _getSwiftValue(self_) else {
+                        PyErr_SetString(PyExc_SystemError, "\(raw: typeName): underlying Swift value is missing (object already deallocated?)")
+                        return nil
+                    }
                     let repr = value.__repr__()
                     return repr.withCString { PyUnicode_FromString($0) }
                 }

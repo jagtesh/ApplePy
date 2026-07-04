@@ -13,6 +13,14 @@ public struct PyUnionMacro: MemberMacro, ExtensionMacro {
         conformingTo protocols: [TypeSyntax],
         in context: some MacroExpansionContext
     ) throws -> [ExtensionDeclSyntax] {
+        // Only enums are valid targets for @PyUnion. If applied to something
+        // else, this macro's other conformance (the MemberMacro expansion,
+        // implemented further below in this file) will emit a diagnostic;
+        // here we must avoid generating empty (non-functional) conformance
+        // stubs that would otherwise fail to compile or silently do nothing.
+        guard declaration.is(EnumDeclSyntax.self) else {
+            return []
+        }
         let fromPyExt: DeclSyntax = "extension \(type.trimmed): FromPyObject {}"
         let intoPyExt: DeclSyntax = "extension \(type.trimmed): IntoPyObject {}"
         return [
